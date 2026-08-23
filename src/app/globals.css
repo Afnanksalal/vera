@@ -1,0 +1,139 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-geist-sans);
+  --font-display: var(--font-display);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-ok: var(--ok);
+  --color-bad: var(--bad);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --radius: 0.7rem;
+
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.2 0.006 285);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.006 285);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.006 285);
+
+  /* Mint green as the single accent; bold white sits on mint fills. */
+  --primary: oklch(0.58 0.13 163);
+  --primary-foreground: oklch(0.99 0 0);
+  --brand: oklch(0.57 0.13 163);
+  --brand-foreground: oklch(0.99 0 0);
+
+  --secondary: oklch(0.97 0.003 285);
+  --secondary-foreground: oklch(0.28 0.006 285);
+  --muted: oklch(0.968 0.003 285);
+  --muted-foreground: oklch(0.53 0.008 285);
+  --accent: oklch(0.966 0.006 60);
+  --accent-foreground: oklch(0.28 0.006 285);
+
+  --destructive: oklch(0.58 0.21 25);
+  --bad: oklch(0.55 0.2 25);
+  --ok: oklch(0.58 0.13 155);
+
+  --border: oklch(0.92 0.004 285);
+  --input: oklch(0.92 0.004 285);
+  --ring: oklch(0.58 0.13 163);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Thin, unobtrusive scrollbars. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.85 0.004 285) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: oklch(0.85 0.004 285);
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(0.78 0.004 285);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display), ui-serif, Georgia, serif;
+    font-feature-settings: "ss01", "liga";
+  }
+  /* Accent word: bigger and bolder than the surrounding heading. */
+  .accent {
+    font-family: var(--font-display), ui-serif, Georgia, serif;
+    font-style: italic;
+    font-weight: 600;
+    font-size: 1.18em;
+    line-height: 1;
+    letter-spacing: -0.015em;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .grid-faint {
+    background-image:
+      linear-gradient(to right, oklch(0.93 0.004 285 / 0.7) 1px, transparent 1px),
+      linear-gradient(to bottom, oklch(0.93 0.004 285 / 0.7) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 78%);
+  }
+}
