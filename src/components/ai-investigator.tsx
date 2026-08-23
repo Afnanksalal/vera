@@ -79,19 +79,23 @@ export function AiInvestigator({
         )}
       </div>
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="mt-5 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
         <label className="text-sm text-muted-foreground sm:sr-only" htmlFor="sale">
           Sale to investigate
         </label>
         <Select value={saleId} onValueChange={(v) => typeof v === "string" && setSaleId(v)}>
-          <SelectTrigger id="sale" className="h-9 w-full sm:w-80">
-            <SelectValue placeholder="Choose a sale" />
+          <SelectTrigger id="sale" className="h-9 min-w-0 sm:max-w-xs">
+            <SelectValue placeholder="Choose a sale">
+              {(value: string | null) => value ?? "Choose a sale"}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {sales.map((s) => (
-              <SelectItem key={s.sale_id} value={s.sale_id}>
-                <span className="font-mono text-xs">{s.sale_id}</span>
-                <span className="text-muted-foreground">planted {s.fault}</span>
+              <SelectItem key={s.sale_id} value={s.sale_id} label={`${s.sale_id} ${s.fault}`}>
+                <span className="flex min-w-0 flex-col items-start gap-0.5">
+                  <span className="font-mono text-xs">{s.sale_id}</span>
+                  <span className="max-w-full truncate text-[11px] text-muted-foreground">{s.fault}</span>
+                </span>
               </SelectItem>
             ))}
           </SelectContent>
