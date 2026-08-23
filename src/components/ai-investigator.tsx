@@ -9,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 
 type ClaimResult = {
   type: string;
@@ -74,9 +73,9 @@ export function AiInvestigator({
           </p>
         </div>
         {status.enabled && (
-          <span className="rounded-full bg-[color:var(--ok)]/12 px-3 py-1 text-xs font-medium text-[color:var(--ok)]">
+          <p className="text-xs text-muted-foreground">
             {status.provider} {status.name}
-          </span>
+          </p>
         )}
       </div>
 
@@ -128,22 +127,15 @@ export function AiInvestigator({
                 <div key={c.type} className="rounded-lg border border-border bg-secondary/30 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-mono text-sm font-semibold">{c.type}</span>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="rounded-full border border-border bg-background px-2 py-0.5 font-mono">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-muted-foreground">
+                      <span>
                         AI: {c.ai_action}
                         {c.ai_code ? ` ${c.ai_code}` : ""}
                       </span>
-                      <span
-                        className={cn(
-                          "rounded-full px-2 py-0.5 font-mono",
-                          c.verifier_accepted
-                            ? "bg-[color:var(--ok)]/12 text-[color:var(--ok)]"
-                            : "bg-[color:var(--bad)]/12 text-[color:var(--bad)]"
-                        )}
-                      >
+                      <span className={c.verifier_accepted ? "text-[color:var(--ok)]" : "text-[color:var(--bad)]"}>
                         verifier: {c.verifier_accepted ? "accepted" : "rejected"}
                       </span>
-                      <span className="font-mono text-muted-foreground">→ {c.final_status}</span>
+                      <span>→ {c.final_status}</span>
                     </div>
                   </div>
                   {c.rationale && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{c.rationale}</p>}

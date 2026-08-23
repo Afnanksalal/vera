@@ -31,11 +31,7 @@ export default function HomePage() {
         <div className="pointer-events-none absolute inset-0 grid-faint" aria-hidden />
         <div className="relative mx-auto grid w-full max-w-6xl items-center gap-8 px-5 pb-14 pt-16 sm:px-6 sm:pt-20 lg:grid-cols-[1.05fr_0.95fr]">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-              Meet Vera, your books&rsquo; night-shift auditor
-            </span>
-            <h1 className="mt-6 text-5xl font-medium leading-[1.05] tracking-tight text-balance sm:text-6xl">
+            <h1 className="text-5xl font-medium leading-[1.05] tracking-tight text-balance sm:text-6xl">
               The ledger that{" "}
               <span className="accent text-brand">checks</span> what
               your agents bought.
@@ -147,19 +143,16 @@ export default function HomePage() {
               <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 What Vera flagged
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <ul className="mt-3 grid gap-x-6 gap-y-1.5 font-mono text-xs sm:grid-cols-2">
                 {Object.entries(e.exceptionsByCode)
                   .sort()
                   .map(([code, count]) => (
-                    <span
-                      key={code}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 font-mono text-xs"
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--bad)]" />
-                      {code} <span className="text-muted-foreground">{count}</span>
-                    </span>
+                    <li key={code} className="flex justify-between gap-4">
+                      <span>{code}</span>
+                      <span className="text-muted-foreground tabular-nums">{count}</span>
+                    </li>
                   ))}
-              </div>
+              </ul>
             </div>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Link href="/ledger" className={cn(buttonVariants({ size: "sm" }), "h-9 px-4")}>

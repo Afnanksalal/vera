@@ -80,22 +80,7 @@ export default function LedgerPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-5 py-14 sm:px-6">
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 font-medium text-muted-foreground">
-          <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-          Live close, seed {snap.seed}
-        </span>
-        <span
-          className={cn(
-            "rounded-full px-3 py-1 font-medium",
-            e.pass ? "bg-[color:var(--ok)]/12 text-[color:var(--ok)]" : "bg-[color:var(--bad)]/12 text-[color:var(--bad)]"
-          )}
-        >
-          {e.pass ? "All gates pass" : "Gate failure"}
-        </span>
-      </div>
-
-      <div className="mt-5 flex items-center gap-4">
+      <div className="flex items-center gap-4">
         <Image
           src="/art/vera-mascot.png"
           alt="Vera"
@@ -108,9 +93,10 @@ export default function LedgerPage() {
             Vera&rsquo;s <span className="accent text-brand">live</span> ledger
           </h1>
           <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">
-            The scribe, the skeptic, and the judge run on a seeded week of agent
-            purchases. Every verdict is committed only on evidence, then
-            hash-chained and signed. Numbers below are computed on request.
+            Seed {snap.seed}. The scribe, the skeptic, and the judge run on a
+            week of agent purchases. Every verdict is committed only on
+            evidence, then hash-chained and signed.{" "}
+            {e.pass ? "All gates pass." : "A gate failed."}
           </p>
         </div>
       </div>
@@ -177,9 +163,9 @@ export default function LedgerPage() {
                 fires on {snap.anomaly.discovered.fires.length} sales ({(snap.anomaly.discovered.coverage * 100).toFixed(0)}%)
               </p>
               <p className="mt-1 font-mono text-[11px] text-muted-foreground">{snap.anomaly.discovered.fires.join(", ")}</p>
-              <span className="mt-3 inline-block rounded-full bg-secondary px-2.5 py-1 text-xs font-medium">
-                status: {snap.anomaly.discovered.status.replace("_", " ")}
-              </span>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Status: {snap.anomaly.discovered.status.replace("_", " ")}
+              </p>
             </div>
           ) : (
             <p className="mt-4 text-sm text-muted-foreground">No anomaly discovered.</p>
@@ -240,15 +226,16 @@ export default function LedgerPage() {
             ))}
           </div>
           <h3 className="mt-6 text-sm font-medium">Exceptions by code</h3>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <ul className="mt-3 space-y-1 font-mono text-xs">
             {Object.entries(e.exceptionsByCode)
               .sort()
               .map(([code, count]) => (
-                <span key={code} className="rounded-full border border-border px-3 py-1 font-mono text-xs">
-                  {code} <span className="text-muted-foreground">{count}</span>
-                </span>
+                <li key={code} className="flex justify-between gap-4">
+                  <span>{code}</span>
+                  <span className="text-muted-foreground tabular-nums">{count}</span>
+                </li>
               ))}
-          </div>
+          </ul>
         </div>
       </section>
 
