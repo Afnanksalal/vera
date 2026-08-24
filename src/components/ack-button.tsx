@@ -11,10 +11,10 @@ export function AckButton({ id }: { id: string }) {
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   return (
-    <div className="flex min-w-[18rem] flex-wrap items-center justify-end gap-2">
+    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:min-w-[18rem] sm:justify-end">
     <Input
-      aria-label="Acknowledgement note"
-      placeholder="Resolution note (optional)"
+      aria-label="Review note"
+      placeholder="Add a note (optional)"
       maxLength={500}
       value={note}
       onChange={(event) => setNote(event.target.value)}
@@ -42,7 +42,7 @@ export function AckButton({ id }: { id: string }) {
         router.refresh();
       }}
     >
-      {pending ? "Saving…" : "Acknowledge"}
+      {pending ? "Saving…" : "Mark reviewed"}
     </Button>
     {error ? <p className="w-full text-right text-xs text-destructive">{error}</p> : null}
     </div>

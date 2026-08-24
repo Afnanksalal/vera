@@ -28,7 +28,7 @@ export function CloseButton() {
           router.refresh();
         }}
       >
-        {pending ? "Closing…" : "Run close"}
+        {pending ? "Checking…" : "Check latest records"}
       </Button>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
     </div>

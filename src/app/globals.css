@@ -85,6 +85,13 @@
     @apply bg-background text-foreground;
   }
 
+  /* The authenticated console has its own navigation and should feel like an
+     application, not a marketing page. */
+  body:has([data-console-shell]) > footer,
+  body:has([data-console-shell]) .console-home-link {
+    display: none !important;
+  }
+
   /* Thin, unobtrusive scrollbars. */
   * {
     scrollbar-width: thin;

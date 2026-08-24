@@ -1,20 +1,10 @@
-import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/server/http";
 import { safeRedirectPath } from "@/server/navigation";
-import { cn } from "@/lib/utils";
+import { ConsoleNav } from "@/components/console-nav";
 
 export const dynamic = "force-dynamic";
-
-const NAV = [
-  { href: "/app", label: "Ledger" },
-  { href: "/app/analysis", label: "Analysis" },
-  { href: "/app/closes", label: "Closes" },
-  { href: "/app/review", label: "Review" },
-  { href: "/app/pay", label: "Checkout verification" },
-  { href: "/app/settings", label: "Settings" },
-];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await currentUser();
@@ -24,28 +14,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-6">
-      <div className="mb-8 flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Workspace</p>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Your mandate ledger</h1>
-          <p className="text-sm text-muted-foreground">{user.email}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <nav className="flex flex-wrap gap-1">
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn("rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground")}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
+    <div data-console-shell className="mx-auto w-full max-w-6xl px-5 py-6 sm:px-6 sm:py-8">
+      <div className="grid gap-7 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-10">
+        <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+          <ConsoleNav />
+        </aside>
+        <div className="min-w-0 pb-8">{children}</div>
       </div>
-      {children}
     </div>
   );
 }

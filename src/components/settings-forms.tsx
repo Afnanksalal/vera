@@ -207,13 +207,13 @@ export function SyncButton() {
         const data = (await res.json()) as { inserted?: number; updated?: number; unchanged?: number; failed?: number; recon_processed?: number; errors?: string[]; error?: string };
         setPending(false);
         if (!res.ok) return setMessage(data.error || "Sync failed");
-        setMessage(`Imported ${data.inserted ?? 0}; updated ${data.updated ?? 0}; unchanged ${data.unchanged ?? 0}; settlement recon rows ${data.recon_processed ?? 0}; failed ${data.failed ?? 0}.${data.errors?.length ? ` ${data.errors.join(" ")}` : ""}`);
+        setMessage(`${data.inserted ?? 0} new payments, ${data.updated ?? 0} updated, ${data.recon_processed ?? 0} settlement rows imported, and ${data.failed ?? 0} failed.${data.errors?.length ? ` ${data.errors.join(" ")}` : ""}`);
         router.refresh();
       }}
     >
-      {pending ? "Syncing…" : "Sync payments and settlement recon"}
+      {pending ? "Syncing…" : "Sync payments and settlements"}
     </Button>
-    <Input aria-label="Settlement recon month" type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="w-44" />
+    <Input aria-label="Month to import" type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="w-44" />
     {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
     </div>
   );

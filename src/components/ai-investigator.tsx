@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { friendlyClaim, friendlyCode, friendlyStatus } from "@/components/console-ui";
 import {
   Select,
   SelectContent,
@@ -64,10 +65,9 @@ export function AiInvestigator({
     <section className="rounded-2xl border border-border bg-card p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Investigate with AI</h2>
+          <h2 className="text-lg font-semibold">Ask AI to investigate a payment</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            The model reads the sale with tools and proposes a verdict. Vera&rsquo;s
-            verifier then re-derives it, so a wrong call is caught, not booked.
+            The model suggests what may have happened. Vera checks the suggestion against the stored evidence before showing a result.
           </p>
         </div>
         {status.enabled && (
@@ -79,12 +79,12 @@ export function AiInvestigator({
 
       <div className="mt-5 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
         <label className="text-sm text-muted-foreground sm:sr-only" htmlFor="sale">
-          Sale to investigate
+          Payment to investigate
         </label>
         <Select value={saleId} onValueChange={(v) => typeof v === "string" && setSaleId(v)}>
           <SelectTrigger id="sale" className="h-9 min-w-0 sm:max-w-xs">
-            <SelectValue placeholder="Choose a sale">
-              {(value: string | null) => value ?? "Choose a sale"}
+              <SelectValue placeholder="Choose a payment">
+              {(value: string | null) => value ?? "Choose a payment"}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -102,7 +102,7 @@ export function AiInvestigator({
           disabled={loading || !status.enabled}
           className="h-9 w-full px-4 sm:w-auto"
         >
-          {loading ? "Investigating…" : "Investigate"}
+          {loading ? "Investigating…" : "Investigate payment"}
         </Button>
       </div>
 
@@ -115,8 +115,7 @@ export function AiInvestigator({
       {result && (
         <div className="mt-5">
           <p className="text-sm text-muted-foreground">
-            {result.agent} made <span className="font-medium text-foreground">{result.tool_calls}</span> tool calls on{" "}
-            <span className="font-mono">{result.sale_id}</span>.
+            Investigation complete for <span className="font-mono">{result.sale_id}</span>.
           </p>
           <div className="mt-3 space-y-2">
             {result.claims.map((c) => {
@@ -127,22 +126,22 @@ export function AiInvestigator({
               return (
                 <div key={c.type} className="rounded-lg border border-border bg-secondary/30 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-mono text-sm font-semibold">{c.type}</span>
+                    <span className="text-sm font-semibold">{friendlyClaim(c.type)}</span>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-muted-foreground">
                       <span>
-                        AI: {c.ai_action}
-                        {c.ai_code ? ` ${c.ai_code}` : ""}
+                        AI suggestion: {c.ai_action}
+                        {c.ai_code ? ` · ${friendlyCode(c.ai_code)}` : ""}
                       </span>
                       <span className={c.verifier_accepted ? "text-[color:var(--ok)]" : "text-[color:var(--bad)]"}>
-                        verifier: {c.verifier_accepted ? "accepted" : "rejected"}
+                        Vera: {c.verifier_accepted ? "confirmed" : "rejected"}
                       </span>
-                      <span>→ {c.final_status}</span>
+                      <span>Result: {friendlyStatus(c.final_status)}</span>
                     </div>
                   </div>
                   {c.rationale && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{c.rationale}</p>}
                   {disagreed && (
                     <p className="mt-1 text-xs font-medium text-[color:var(--bad)]">
-                      The verifier overrode the model here. This is the safety net working.
+                      Vera rejected the AI suggestion because the evidence did not support it.
                     </p>
                   )}
                 </div>

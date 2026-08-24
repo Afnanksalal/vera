@@ -42,7 +42,7 @@ async function AuthButtons() {
     return (
       <div className="flex items-center gap-2">
         <span className="hidden max-w-[14rem] truncate text-sm text-muted-foreground sm:inline">{user.email}</span>
-        <Link href="/app" className={cn(buttonVariants({ size: "sm" }), "h-9 px-3.5")}>
+        <Link href="/app" className={cn(buttonVariants({ size: "sm" }), "console-home-link h-9 px-3.5")}>
           Open app
         </Link>
         <LogoutButton />

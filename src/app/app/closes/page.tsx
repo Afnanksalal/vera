@@ -1,16 +1,21 @@
 import Link from "next/link";
+import { FileCheck2 } from "lucide-react";
 import { BundleVerifier } from "@/components/bundle-verifier";
+import { EmptyState, PageHeader, formatDateTime } from "@/components/console-ui";
 import { currentUser } from "@/server/http";
 import { listCloses } from "@/server/ledger";
 
 export const dynamic = "force-dynamic";
 
 export default async function ClosesPage() {
-  const user = await currentUser();
-  if (!user) return null;
+  const user = await currentUser(); if (!user) return null;
   const closes = listCloses(user.id);
   return <div className="grid gap-8">
-    <section className="grid gap-3"><div><h2 className="text-lg font-semibold">Audit bundles</h2><p className="mt-1 text-sm text-muted-foreground">Download a self-contained close or verify a bundle against this installation’s trusted signing identity.</p></div><BundleVerifier/><a className="text-sm text-brand underline underline-offset-4" href="/api/v1/public-key">Download installation public key</a></section>
-    <section className="grid gap-3"><h2 className="text-lg font-semibold">Close history</h2>{closes.length === 0 ? <p className="text-sm text-muted-foreground">No closes yet.</p> : <div className="overflow-x-auto rounded-xl border border-border"><table className="w-full min-w-[680px] text-left text-sm"><thead><tr className="text-muted-foreground"><th className="px-4 py-2">Created</th><th>Sales</th><th>Proven</th><th>Excepted</th><th>Abstained</th><th></th></tr></thead><tbody>{closes.map((close) => <tr key={close.id} className="border-t border-border"><td className="px-4 py-3"><Link className="text-brand underline underline-offset-4" href={`/app/closes/${close.id}`}>{new Date(close.created_at).toLocaleString()}</Link></td><td>{close.sales}</td><td>{close.proven}</td><td>{close.excepted}</td><td>{close.abstained}</td><td><a className="text-brand underline underline-offset-4" href={`/api/v1/closes/${close.id}?download=bundle`}>Download</a></td></tr>)}</tbody></table></div>}</section>
+    <PageHeader title="Reports" description="Open a completed check, review its outcome, or download the signed evidence for an auditor." />
+    {closes.length === 0 ? <EmptyState icon={FileCheck2} title="No reports yet" description="Import payment records from the Overview, then run the checks to create your first report." /> : <div className="grid gap-3">{closes.map((close) => {
+      const attention = close.excepted + close.abstained;
+      return <Link key={close.id} href={`/app/closes/${close.id}`} className="group rounded-2xl border border-border bg-card p-5 transition-colors hover:border-brand/35"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">{formatDateTime(close.created_at)}</p><p className="mt-1 text-sm text-muted-foreground">{close.sales} payments checked</p></div><div className="flex flex-wrap items-center gap-2 text-sm"><span className="rounded-full bg-ok/10 px-2.5 py-1 text-ok">{close.proven} passed</span>{attention ? <span className="rounded-full bg-bad/10 px-2.5 py-1 text-bad">{attention} need attention</span> : <span className="rounded-full bg-muted px-2.5 py-1 text-muted-foreground">No issues</span>}<span className="ml-1 font-medium text-brand group-hover:underline">Open report</span></div></div></Link>;
+    })}</div>}
+    <details className="group rounded-2xl border border-border bg-card"><summary className="cursor-pointer list-none p-5 text-sm font-medium">Advanced: verify an exported report</summary><div className="grid gap-4 border-t border-border p-5"><p className="text-sm text-muted-foreground">Use this when someone sends you a Vera evidence bundle and you want to confirm its signature and contents.</p><BundleVerifier/><a className="w-fit text-sm font-medium text-brand hover:underline" href="/api/v1/public-key">Download installation public key</a></div></details>
   </div>;
 }

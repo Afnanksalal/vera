@@ -11,7 +11,7 @@ declare global {
 }
 
 export function CheckoutForm({ mode }: { mode: "test" | "live" }) {
-  const [amount, setAmount] = useState(mode === "live" ? "100" : "10000");
+  const [amount, setAmount] = useState(mode === "live" ? "1.00" : "100.00");
   const [status, setStatus] = useState<string | null>(null);
   const [confirmLive, setConfirmLive] = useState(false);
   const [pending, setPending] = useState(false);
@@ -22,7 +22,7 @@ export function CheckoutForm({ mode }: { mode: "test" | "live" }) {
     const orderRes = await fetch("/api/v1/razorpay/orders", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ amount_paise: Number(amount) }),
+      body: JSON.stringify({ amount_paise: Math.round(Number(amount) * 100) }),
     });
     const order = (await orderRes.json()) as { id?: string; amount?: number; key_id?: string; error?: string };
     if (!orderRes.ok || !order.id || !order.key_id) {
@@ -60,7 +60,7 @@ export function CheckoutForm({ mode }: { mode: "test" | "live" }) {
             reject(new Error(data.error || "Verify failed"));
             return;
           }
-          setStatus("Payment captured, ingested, and closed.");
+          setStatus("Payment captured and checked successfully.");
           resolve();
         },
         modal: { ondismiss: () => reject(new Error("Checkout was dismissed before payment.")) },
@@ -79,12 +79,12 @@ export function CheckoutForm({ mode }: { mode: "test" | "live" }) {
         pay().catch((err) => { setPending(false); setStatus(err instanceof Error ? err.message : "Payment failed"); });
       }}
     >
-      <Field label="Amount (paise)">
-        <Input type="number" min={100} step={1} value={amount} onChange={(e) => setAmount(e.target.value)} />
+      <Field label="Amount (₹)">
+        <Input type="number" min={1} step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
       </Field>
       {mode === "live" ? <label className="flex items-start gap-2 text-sm"><input className="mt-1" type="checkbox" checked={confirmLive} onChange={(event) => setConfirmLive(event.target.checked)} /><span>I understand this opens live Razorpay Checkout and may charge real money.</span></label> : null}
       <Button type="submit" disabled={pending || (mode === "live" && !confirmLive)} className="h-10 w-fit px-4">
-        {pending ? "Processing…" : `Open ${mode === "live" ? "live" : "test"} Razorpay Checkout`}
+        {pending ? "Processing…" : `Continue to ${mode === "live" ? "live " : ""}Razorpay`}
       </Button>
       {status ? <p className="text-sm text-muted-foreground">{status}</p> : null}
     </form>

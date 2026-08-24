@@ -25,7 +25,7 @@ export function IngestForm() {
       });
       const data = (await res.json()) as { inserted?: number; updated?: number; unchanged?: number; error?: string };
       if (!res.ok) throw new Error(data.error || "Import failed");
-      setMessage(`Imported ${data.inserted ?? 0}; updated ${data.updated ?? 0}; unchanged ${data.unchanged ?? 0}.`);
+      setMessage(`${data.inserted ?? 0} new, ${data.updated ?? 0} updated, and ${data.unchanged ?? 0} already up to date.`);
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Import failed");
@@ -38,7 +38,7 @@ export function IngestForm() {
     <div className="flex flex-wrap items-center gap-3">
       <input ref={fileRef} type="file" accept="application/json,.json" className="max-w-xs text-sm" />
       <Button type="button" variant="outline" disabled={pending} onClick={submit}>
-        {pending ? "Importing…" : "Import records"}
+        {pending ? "Importing…" : "Import JSON file"}
       </Button>
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
     </div>

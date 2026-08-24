@@ -33,7 +33,7 @@ export function SiteFooter() {
               Trust
             </span>
             <Link href="/app/closes" className="text-muted-foreground hover:text-foreground">
-              Signed closes
+              Signed reports
             </Link>
             <Link href="/app/settings" className="text-muted-foreground hover:text-foreground">
               Installation settings
