@@ -1,9 +1,12 @@
 import { investigateSale } from "@/mandate/agent";
+import { sha256 } from "@/mandate/canonical";
 import { finalizeClose } from "@/mandate/orchestrate";
 import { Transcript } from "@/mandate/transcript";
 import type { Verdict } from "@/mandate/verifier";
 import { worldForUser } from "@/server/analysis";
 import { assertSameOriginIfCookie, handle, readJson, requireUser, HttpError } from "@/server/http";
+import { saveInvestigation } from "@/server/investigations";
+import { latestClose } from "@/server/ledger";
 import { modelForUser } from "@/server/settings";
 import { rateLimit } from "@/server/policy";
 
@@ -17,10 +20,17 @@ export async function POST(req: Request) {
     if (!rateLimit(`investigate:${user.id}`, 10, 60_000)) return Response.json({ error: "Investigation rate limit reached.", code: "rate_limited" }, { status: 429 });
     const model = modelForUser(user.id);
     if (!model) throw new HttpError(400, "Configure an AI provider in Settings first.", "ai_not_configured");
-    const body = (await readJson(req, 8_192)) as { sale_id?: string };
+    const body = (await readJson(req, 8_192)) as { sale_id?: string; close_id?: string };
     const world = worldForUser(user.id);
     const sale = world.sales.find((item) => item.sale_id === body.sale_id);
     if (!sale) throw new HttpError(404, "Sale not found.", "not_found");
+    const currentClose = latestClose(user.id);
+    if (currentClose && currentClose.summary.world_hash !== sha256(world)) {
+      throw new HttpError(409, "Payment evidence changed after the latest report. Run the checks again before investigating.", "stale_report");
+    }
+    if (body.close_id && body.close_id !== currentClose?.summary.id) {
+      throw new HttpError(409, "This report is historical. Run a new check before investigating it with current evidence.", "stale_report");
+    }
     const transcript = new Transcript(world);
     const { proposals, report } = await investigateSale(model, world, sale, transcript);
     const run = finalizeClose(
@@ -51,11 +61,13 @@ export async function POST(req: Request) {
       };
     });
 
-    return Response.json({
+    const investigation = saveInvestigation(user.id, {
+      close_id: currentClose?.summary.id ?? null,
       sale_id: sale.sale_id,
-      agent: model.name,
+      model: model.name,
       tool_calls: report.toolCalls,
       claims,
     });
+    return Response.json(investigation, { status: 201 });
   });
 }

@@ -14,6 +14,7 @@ import { analyzeUser } from "./analysis";
 import { calibrationRows, importCalibration } from "./calibration";
 import { enqueueRazorpayWebhook } from "./webhooks";
 import { mergeRazorpayRecord, settlementFromRazorpayRecon } from "./razorpay";
+import { latestInvestigations, saveInvestigation } from "./investigations";
 
 process.env.VERA_TEST = "1";
 
@@ -103,6 +104,26 @@ test("AI settings update preserves the encrypted key when replacement is blank",
   const after = getDb().prepare("SELECT api_key_cipher FROM ai_settings WHERE user_id = ?").get(user.id) as { api_key_cipher: string };
   assert.equal(after.api_key_cipher, before.api_key_cipher);
   assert.equal(aiSettingsPublic(user.id).model, "model-2");
+});
+
+test("AI investigations are persisted per user, report, and payment", () => {
+  const user = createUser("ops@example.com", "super-secret-12");
+  ingestRecords(user.id, "test", EXAMPLE_RECORDS);
+  const close = closeUser(user.id);
+  const firstSale = latestClose(user.id)!.claims[0].sale_id;
+  saveInvestigation(user.id, {
+    close_id: close.id,
+    sale_id: firstSale,
+    model: "claude-test",
+    tool_calls: 3,
+    claims: [{ type: "AUTHORIZED", ai_action: "prove", ai_code: null, rationale: "Evidence found.", verifier_accepted: true, verifier_reason: "accepted", final_status: "PROVEN", final_code: null }],
+  });
+  const stored = latestInvestigations(user.id, close.id).get(firstSale);
+  assert.equal(stored?.model, "claude-test");
+  assert.equal(stored?.tool_calls, 3);
+  assert.equal(stored?.claims[0].verifier_accepted, true);
+  const other = createUser("other@example.com", "super-secret-12");
+  assert.equal(latestInvestigations(other.id, close.id).size, 0);
 });
 
 test("first account owns the installation and later accounts are isolated members", () => {

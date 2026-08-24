@@ -91,6 +91,9 @@
   body:has([data-console-shell]) .console-home-link {
     display: none !important;
   }
+  body:not(:has([data-landing-page])) .marketing-links {
+    display: none !important;
+  }
 
   /* Thin, unobtrusive scrollbars. */
   * {

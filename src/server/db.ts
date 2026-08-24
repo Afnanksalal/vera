@@ -115,6 +115,19 @@ CREATE TABLE IF NOT EXISTS ai_settings (
   updated_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS ai_investigations (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  close_id TEXT REFERENCES closes(id) ON DELETE CASCADE,
+  sale_id TEXT NOT NULL,
+  model TEXT NOT NULL,
+  result_json TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS ai_investigations_user_sale
+  ON ai_investigations(user_id, sale_id, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS signing_identity (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   private_key_cipher TEXT NOT NULL,
@@ -185,6 +198,22 @@ const MIGRATIONS: { version: number; sql: string }[] = [
       WHERE id = (SELECT id FROM users ORDER BY created_at ASC, id ASC LIMIT 1);
       CREATE UNIQUE INDEX IF NOT EXISTS users_single_owner
         ON users(role) WHERE role = 'owner';
+    `,
+  },
+  {
+    version: 4,
+    sql: `
+      CREATE TABLE IF NOT EXISTS ai_investigations (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        close_id TEXT REFERENCES closes(id) ON DELETE CASCADE,
+        sale_id TEXT NOT NULL,
+        model TEXT NOT NULL,
+        result_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS ai_investigations_user_sale
+        ON ai_investigations(user_id, sale_id, created_at DESC);
     `,
   },
 ];

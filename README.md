@@ -27,7 +27,7 @@
 
 When an AI agent buys under a mandate, the proof of what was authorized is scattered across mandate attestations, carts, receipts, processor settlements, and bank credits. Vera puts that trail back together, proves or flags every step, and keeps a signed record that a stranger can re-check.
 
-An optional language model investigates. A deterministic verifier replays the evidence and re-derives every verdict from stored records. The model is useful; it is never trusted.
+The AI investigator reasons over the payment trail and explains suspicious evidence. A deterministic verifier replays every cited lookup and re-derives every verdict from stored records, so the model is central to investigation without being trusted to mutate the ledger.
 
 Vera is operated entirely through its web console and HTTP integration API. It has no product CLI and does not use `.env` files.
 

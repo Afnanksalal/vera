@@ -24,7 +24,7 @@ type ClaimResult = {
 
 type Result = {
   sale_id: string;
-  agent: string;
+  model: string;
   tool_calls: number;
   claims: ClaimResult[];
 };

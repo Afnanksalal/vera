@@ -19,7 +19,7 @@ export function SiteHeader() {
           <Image src="/art/vera-icon.png" alt="Vera" width={30} height={30} className="rounded-lg" />
           <span className="font-display text-[20px] font-semibold tracking-tight">Vera</span>
         </Link>
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="marketing-links hidden items-center gap-1 md:flex">
           {links.map((link) => (
             <Link
               key={link.href}

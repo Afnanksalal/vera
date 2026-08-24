@@ -22,7 +22,7 @@ const CODE_LABELS: Record<string, string> = { MANDATE_ATTESTATION_MISSING: "Mand
 
 export function friendlyClaim(value: string): string { return CLAIM_LABELS[value] ?? sentenceCase(value); }
 export function friendlyCode(value: string | null | undefined): string { return value ? CODE_LABELS[value] ?? sentenceCase(value) : "More evidence is needed"; }
-export function friendlyStatus(value: string): string { return value === "PROVEN" ? "Passed" : value === "EXCEPTED" ? "Needs attention" : value === "ABSTAINED" ? "Missing evidence" : sentenceCase(value); }
+export function friendlyStatus(value: string): string { return value === "PROVEN" ? "Passed" : value === "EXCEPTED" ? "Needs attention" : value === "ABSTAINED" ? "Inconclusive" : sentenceCase(value); }
 export function formatDateTime(value: number): string { return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)); }
 export function StatusPill({ status }: { status: string }) { const good = status === "PROVEN"; const warning = status === "ABSTAINED"; return <span className={cn("inline-flex rounded-full px-2.5 py-1 text-xs font-medium", good ? "bg-ok/10 text-ok" : warning ? "bg-amber-500/10 text-amber-700" : "bg-bad/10 text-bad")}>{friendlyStatus(status)}</span>; }
 function sentenceCase(value: string): string { const text = value.toLowerCase().replaceAll("_", " "); return text ? text[0].toUpperCase() + text.slice(1) : text; }

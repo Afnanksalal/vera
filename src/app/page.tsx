@@ -18,7 +18,7 @@ const CHECKS = [
 ];
 
 const STEPS = [
-  { name: "Investigate", body: "Deterministic tools, or an optional model configured in Settings, gather evidence and propose verdicts." },
+  { name: "Investigate", body: "Vera’s AI investigator gathers evidence, explains suspicious payments, and proposes verdicts for independent verification." },
   { name: "Challenge", body: "Vera replays every cited lookup and independently re-derives every decision from the stored records." },
   { name: "Commit", body: "Only the verifier can update claim status. Every close is hash-chained and signed by this installation." },
 ];
@@ -33,7 +33,7 @@ export default async function HomePage() {
       : { href: "/signup", label: "Set up Vera" };
 
   return (
-    <div>
+    <div data-landing-page>
       <section className="relative overflow-hidden border-b border-border/80">
         <div className="pointer-events-none absolute inset-0 grid-faint" aria-hidden />
         <div className="relative mx-auto grid w-full max-w-6xl items-center gap-8 px-5 pb-14 pt-16 sm:px-6 sm:pt-20 lg:grid-cols-[1.05fr_0.95fr]">

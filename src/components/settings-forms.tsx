@@ -236,7 +236,7 @@ export function SyncButton() {
         const data = (await res.json()) as { inserted?: number; updated?: number; unchanged?: number; failed?: number; recon_processed?: number; errors?: string[]; error?: string };
         setPending(false);
         if (!res.ok) return setMessage(data.error || "Sync failed");
-        setMessage(`${data.inserted ?? 0} new payments, ${data.updated ?? 0} updated, ${data.recon_processed ?? 0} settlement rows imported, and ${data.failed ?? 0} failed.${data.errors?.length ? ` ${data.errors.join(" ")}` : ""}`);
+        setMessage(`${data.inserted ?? 0} new, ${data.updated ?? 0} updated, and ${data.unchanged ?? 0} already up to date. ${data.recon_processed ?? 0} settlement rows checked; ${data.failed ?? 0} failed.${data.errors?.length ? ` ${data.errors.join(" ")}` : ""}`);
         router.refresh();
       }}
     >
