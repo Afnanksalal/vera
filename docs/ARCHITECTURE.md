@@ -143,7 +143,7 @@ Each installation generates one Ed25519 audit identity. Its private key is encry
 
 ```mermaid
 flowchart LR
-  OWNER[Installation owner] --> SETTINGS[/app/settings]
+  OWNER[Installation owner] --> SETTINGS["/app/settings"]
   SETTINGS --> VALIDATE[Server-side validation]
   VALIDATE --> ENC[Envelope encryption]
   ENC --> DB[(SQLite settings)]

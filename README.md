@@ -45,7 +45,7 @@ Vera closes seven typed claims per sale and preserves missing evidence as missin
 
 ## Run Vera
 
-Requirements: Node.js 20 or newer and a persistent local filesystem.
+Requirements: Node.js 22 or newer and a persistent local filesystem.
 
 ```bash
 npm install
