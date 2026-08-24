@@ -176,6 +176,17 @@ const MIGRATIONS: { version: number; sql: string }[] = [
       UPDATE sessions SET last_seen_at = created_at WHERE last_seen_at IS NULL;
     `,
   },
+  {
+    version: 3,
+    sql: `
+      ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'member'
+        CHECK (role IN ('owner', 'member'));
+      UPDATE users SET role = 'owner'
+      WHERE id = (SELECT id FROM users ORDER BY created_at ASC, id ASC LIMIT 1);
+      CREATE UNIQUE INDEX IF NOT EXISTS users_single_owner
+        ON users(role) WHERE role = 'owner';
+    `,
+  },
 ];
 
 let singleton: Database.Database | undefined;

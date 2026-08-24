@@ -23,7 +23,7 @@ export default async function SettingsPage() {
     <div className="grid gap-10">
       <section className="grid gap-3">
         <h2 className="text-lg font-semibold">Account security</h2>
-        <p className="text-sm text-muted-foreground">Changing the owner password invalidates every other active session.</p>
+        <p className="text-sm text-muted-foreground">Changing your password invalidates every other active session for your account.</p>
         <PasswordForm />
       </section>
       <section className="grid gap-3">

@@ -71,39 +71,21 @@ export function createUser(emailRaw: string, password: string): User {
     throw Object.assign(new Error("Password must be 12–128 characters."), { code: "weak_password" });
   }
   const db = getDb();
-  const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
-  if (existing) throw Object.assign(new Error("An account with that email already exists."), { code: "email_taken" });
-  const user: User = { id: randomId("usr"), email, created_at: nowMs() };
-  db.prepare("INSERT INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)").run(
-    user.id,
-    user.email,
-    hashPassword(password),
-    user.created_at
-  );
-  return user;
-}
-
-/** Atomically create the one installation owner. Concurrent setup requests cannot create a second account. */
-export function createInstallationOwner(emailRaw: string, password: string): User {
-  const email = normalizeEmail(emailRaw);
-  if (!emailOk(email)) throw Object.assign(new Error("Enter a valid email."), { code: "invalid_email" });
-  if (!passwordOk(password)) {
-    throw Object.assign(new Error("Password must be 12–128 characters."), { code: "weak_password" });
-  }
-  const db = getDb();
   return db.transaction(() => {
-    if (db.prepare("SELECT 1 FROM users LIMIT 1").get()) {
-      throw Object.assign(new Error("This Vera installation is already initialized."), { code: "registration_closed" });
+    if (db.prepare("SELECT id FROM users WHERE email = ?").get(email)) {
+      throw Object.assign(new Error("An account with that email already exists."), { code: "email_taken" });
     }
+    const role = db.prepare("SELECT 1 FROM users WHERE role = 'owner' LIMIT 1").get() ? "member" : "owner";
     const user: User = { id: randomId("usr"), email, created_at: nowMs() };
-    db.prepare("INSERT INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)").run(
+    db.prepare("INSERT INTO users (id, email, password_hash, created_at, role) VALUES (?, ?, ?, ?, ?)").run(
       user.id,
       user.email,
       hashPassword(password),
-      user.created_at
+      user.created_at,
+      role
     );
     return user;
-  })();
+  }).immediate();
 }
 
 const DUMMY_HASH = hashPassword("timing-oracle-pad-value");
@@ -277,8 +259,7 @@ export function userFromApiKey(raw: string | undefined | null): User | null {
 }
 
 export function isOwner(userId: string): boolean {
-  const row = getDb().prepare("SELECT id FROM users ORDER BY created_at ASC, id ASC LIMIT 1").get() as { id: string } | undefined;
-  return row?.id === userId;
+  return Boolean(getDb().prepare("SELECT 1 FROM users WHERE id = ? AND role = 'owner'").get(userId));
 }
 
 export function installationHasUser(): boolean {

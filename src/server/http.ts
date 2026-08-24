@@ -116,7 +116,7 @@ export function codedError(err: unknown): never {
   if (err instanceof HttpError) throw err;
   const code = err && typeof err === "object" && "code" in err ? String((err as { code: string }).code) : "";
   const message = err instanceof Error ? err.message : "request_failed";
-  const status = code === "registration_closed" || code === "api_key_limit" ? 409 : code === "invalid_credentials" ? 401 : 400;
+  const status = code === "email_taken" || code === "api_key_limit" ? 409 : code === "invalid_credentials" ? 401 : 400;
   if (code) throw new HttpError(status, message, code);
   throw err;
 }

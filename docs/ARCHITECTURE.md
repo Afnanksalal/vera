@@ -143,8 +143,10 @@ Each installation generates one Ed25519 audit identity. Its private key is encry
 
 ```mermaid
 flowchart LR
-  OWNER[Installation owner] --> SETTINGS["/app/settings"]
+  OWNER[Installation owner] --> SETTINGS["Installation settings"]
+  MEMBER[Member accounts] --> WORKSPACE["Isolated workspace settings"]
   SETTINGS --> VALIDATE[Server-side validation]
+  WORKSPACE --> VALIDATE
   VALIDATE --> ENC[Envelope encryption]
   ENC --> DB[(SQLite settings)]
   MASTER[data/.master_key] --> ENC
@@ -159,6 +161,7 @@ The database and master key form one backup unit. Restoring only the database pr
 | Boundary | Control |
 | --- | --- |
 | Browser session | HttpOnly, SameSite cookies; HTTPS-aware Secure flag; CSRF origin enforcement |
+| Account roles | First account is the installation owner; later accounts are isolated members; owner-only checks protect global settings |
 | Integration API | Hashed bearer API keys scoped to a workspace |
 | Razorpay webhook | Per-workspace HMAC verification before ingestion |
 | Stored provider credentials | Encrypted with the installation master key |

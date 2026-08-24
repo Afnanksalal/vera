@@ -65,8 +65,7 @@ try {
 
   const freshHealth = await (await expectStatus("fresh health", "/api/health", 200)).json();
   assert.equal(freshHealth.initialized, false);
-  const freshLogin = await expectStatus("fresh login page", "/login", 307);
-  assert.equal(freshLogin.headers.get("location"), "/signup");
+  await expectStatus("fresh login page", "/login", 200);
   await expectStatus("fresh signup page", "/signup", 200);
 
   await expectStatus("login before setup", "/api/auth/login", 409, {
@@ -98,11 +97,20 @@ try {
   });
   const signupCookie = sessionCookie(signup);
   assert.equal((await (await request("/api/health")).json()).initialized, true);
-  const closedSignup = await expectStatus("closed signup page", "/signup", 307);
-  assert.equal(closedSignup.headers.get("location"), "/login?notice=registration_closed");
-  await expectStatus("second owner", "/api/auth/signup", 409, {
+  await expectStatus("signup remains available", "/signup", 200);
+  const memberSignup = await expectStatus("member signup", "/api/auth/signup", 201, {
     method: "POST",
     ...json({ email: "second@example.com", password: "valid-password-12" }, { origin }),
+  });
+  const memberCookie = sessionCookie(memberSignup);
+  await expectStatus("member session", "/api/auth/me", 200, { headers: { cookie: memberCookie } });
+  await expectStatus("duplicate account", "/api/auth/signup", 409, {
+    method: "POST",
+    ...json({ email: "SECOND@example.com", password: "valid-password-12" }, { origin, "x-forwarded-for": "198.51.100.20" }),
+  });
+  await expectStatus("member cannot update installation settings", "/api/v1/settings", 403, {
+    method: "PUT",
+    ...json({ section: "system", public_url: "", allow_live_razorpay: false, max_ingest_events: 100000 }, { cookie: memberCookie, origin }),
   });
 
   await expectStatus("invalid login", "/api/auth/login", 401, {

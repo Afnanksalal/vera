@@ -3,7 +3,6 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { currentUser } from "@/server/http";
-import { installationHasUser } from "@/server/auth";
 import { LogoutButton } from "@/components/account-actions";
 
 const links = [
@@ -50,16 +49,14 @@ async function AuthButtons() {
       </div>
     );
   }
-  if (installationHasUser()) {
-    return (
-      <Link href="/login" className={cn(buttonVariants({ size: "sm" }), "h-9 px-3.5")}>
+  return (
+    <div className="flex items-center gap-2">
+      <Link href="/login" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-9 px-3.5")}>
         Sign in
       </Link>
-    );
-  }
-  return (
-    <Link href="/signup" className={cn(buttonVariants({ size: "sm" }), "h-9 px-3.5")}>
-      Set up Vera
-    </Link>
+      <Link href="/signup" className={cn(buttonVariants({ size: "sm" }), "h-9 px-3.5")}>
+        Create account
+      </Link>
+    </div>
   );
 }

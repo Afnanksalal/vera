@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { createUser, createInstallationOwner, authenticate, createSession, sessionFromToken, createApiKey, userFromApiKey, changePassword, destroyAllSessions, destroyOtherSessions, destroySessionById, listSessions, sessionContext } from "./auth";
+import { createUser, authenticate, createSession, sessionFromToken, createApiKey, userFromApiKey, changePassword, destroyAllSessions, destroyOtherSessions, destroySessionById, isOwner, listSessions, sessionContext } from "./auth";
 import { getDb, resetDb } from "./db";
 import { decryptSecret, encryptSecret, hashPassword, hmacSha256Hex, timingSafeEqualHex, verifyPassword } from "./crypto";
 import { ingestRecords, closeUser, latestClose, listReviews, acknowledgeReview } from "./ledger";
@@ -105,12 +105,21 @@ test("AI settings update preserves the encrypted key when replacement is blank",
   assert.equal(aiSettingsPublic(user.id).model, "model-2");
 });
 
-test("installation owner creation closes registration atomically", () => {
-  createInstallationOwner("owner@example.com", "super-secret-12");
-  assert.throws(
-    () => createInstallationOwner("second@example.com", "super-secret-12"),
-    (error: unknown) => Boolean(error && typeof error === "object" && "code" in error && error.code === "registration_closed")
+test("first account owns the installation and later accounts are isolated members", () => {
+  const owner = createUser("owner@example.com", "super-secret-12");
+  const member = createUser("member@example.com", "super-secret-12");
+  assert.equal(isOwner(owner.id), true);
+  assert.equal(isOwner(member.id), false);
+  assert.equal(authenticate("member@example.com", "super-secret-12")?.id, member.id);
+  assert.deepEqual(
+    getDb().prepare("SELECT role, COUNT(*) AS count FROM users GROUP BY role ORDER BY role").all(),
+    [{ role: "member", count: 1 }, { role: "owner", count: 1 }]
   );
+  ingestRecords(owner.id, "owner-test", EXAMPLE_RECORDS);
+  closeUser(owner.id);
+  assert.ok(latestClose(owner.id));
+  assert.equal(latestClose(member.id), null);
+  assert.deepEqual(listReviews(member.id), []);
 });
 
 test("password change authenticates only the new password after sessions are revoked", () => {

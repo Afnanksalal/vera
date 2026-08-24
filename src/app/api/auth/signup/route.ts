@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { createInstallationOwner, createSession, sessionContext, sessionCookie } from "@/server/auth";
+import { createSession, createUser, sessionContext, sessionCookie } from "@/server/auth";
 import { assertSameOriginIfCookie, codedError, handle, readJson, requestIsSecure } from "@/server/http";
 import { clientIp, rateLimit } from "@/server/policy";
 
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     const body = (await readJson(req, 8_192)) as { email?: string; password?: string };
     let user;
     try {
-      user = createInstallationOwner(String(body.email ?? ""), String(body.password ?? ""));
+      user = createUser(String(body.email ?? ""), String(body.password ?? ""));
     } catch (err) {
       codedError(err);
     }

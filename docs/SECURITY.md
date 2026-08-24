@@ -21,6 +21,8 @@ Back up `data/.master_key` and `data/vera.db` together. Anyone who obtains both 
 
 Session cookies are `HttpOnly`, `SameSite=Lax`, and marked `Secure` when the request arrives through HTTPS. Cookie-authenticated mutations enforce same-origin requests. API-key requests use bearer authentication.
 
+Account registration remains available after initialization. The first account receives the single installation-owner role; later accounts are members. Workspace records, credentials, API keys, sessions, reviews, and webhooks are scoped by authenticated user ID. Only the owner can change installation-wide settings such as the canonical URL, storage limit, and live-payment opt-in.
+
 ## Razorpay
 
 - Test keys are accepted by default.

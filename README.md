@@ -54,7 +54,7 @@ npm run build
 npm start
 ```
 
-Open `http://127.0.0.1:43147/signup`. The first account is the installation owner. In Settings:
+Open `http://127.0.0.1:43147/signup`. Registration remains available for additional isolated accounts; the first account is the installation owner and controls installation-wide settings. In Settings:
 
 1. Set the canonical public URL used for webhook delivery and origin enforcement.
 2. Connect Razorpay test credentials and a webhook secret.
@@ -75,7 +75,7 @@ Back up both files together. Never copy one without the other. Mount the entire 
 docker compose up -d --build
 ```
 
-The container runs as a non-root user with a read-only root filesystem, a writable `/tmp`, an HTTP health check, and a named volume at `/app/data`. Put port `43147` behind your HTTPS reverse proxy, create the owner account, and set the canonical public URL in Settings.
+The container runs as a non-root user with a read-only root filesystem, a writable `/tmp`, an HTTP health check, and a named volume at `/app/data`. Put port `43147` behind your HTTPS reverse proxy, create the first (owner) account, and set the canonical public URL in Settings. Additional users can create their own isolated accounts from the same web UI.
 
 ---
 
