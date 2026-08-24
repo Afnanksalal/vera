@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function PasswordForm() {
   const router = useRouter();
@@ -52,10 +53,12 @@ export function SystemSettingsForm({ publicUrl, allowLive, maxIngestEvents }: { 
 }
 
 export function AiSettingsForm({ configured, initialProvider, initialModel, initialBaseUrl }: { configured: boolean; initialProvider: "anthropic" | "openai" | null; initialModel: string | null; initialBaseUrl: string | null }) {
+  const router = useRouter();
   const [provider, setProvider] = useState<"anthropic" | "openai">(initialProvider ?? "anthropic");
   const [model, setModel] = useState(initialModel ?? "");
   const [baseUrl, setBaseUrl] = useState(initialBaseUrl ?? "https://api.anthropic.com");
   const [apiKey, setApiKey] = useState("");
+  const [isConfigured, setIsConfigured] = useState(configured);
   const [message, setMessage] = useState<string | null>(null);
   function changeProvider(value: "anthropic" | "openai") {
     setProvider(value);
@@ -67,13 +70,30 @@ export function AiSettingsForm({ configured, initialProvider, initialModel, init
     const res = await fetch("/api/v1/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ section: "ai", provider, model, base_url: baseUrl, api_key: apiKey }) });
     const data = (await res.json()) as { error?: string };
     setMessage(res.ok ? "AI credentials encrypted and saved." : data.error || "Save failed");
-    if (res.ok) setApiKey("");
+    if (res.ok) {
+      setApiKey("");
+      setIsConfigured(true);
+      router.refresh();
+    }
   }}>
-    <label className="grid gap-1.5 text-sm"><span className="font-medium">Provider</span><select className="h-10 rounded-md border border-input bg-background px-3" value={provider} onChange={(e) => changeProvider(e.target.value as "anthropic" | "openai")}><option value="anthropic">Anthropic</option><option value="openai">OpenAI-compatible</option></select></label>
+    <div className="grid gap-1.5 text-sm">
+      <label htmlFor="ai-provider" className="font-medium">Provider</label>
+      <Select value={provider} onValueChange={(value) => typeof value === "string" && changeProvider(value as "anthropic" | "openai")}>
+        <SelectTrigger id="ai-provider" className="h-10">
+          <SelectValue>
+            {(value: "anthropic" | "openai" | null) => value === "openai" ? "OpenAI-compatible" : "Anthropic"}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="anthropic" label="Anthropic">Anthropic</SelectItem>
+          <SelectItem value="openai" label="OpenAI-compatible">OpenAI-compatible</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
     <Field label="Model"><Input required placeholder="Provider model ID" value={model} onChange={(e) => setModel(e.target.value)} /></Field>
     <Field label="Base URL"><Input type="url" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} /></Field>
-    <Field label={configured ? "Replace API key" : "API key"}><Input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} autoComplete="off" /></Field>
-    <div className="flex gap-3"><Button type="submit" className="h-10 w-fit px-4">{configured ? "Update AI settings" : "Connect AI"}</Button>{configured ? <Button type="button" variant="outline" onClick={async () => { await fetch("/api/v1/settings", { method: "DELETE" }); location.reload(); }}>Disconnect</Button> : null}</div>
+    <Field label={isConfigured ? "Replace API key (leave unchanged to keep current)" : "API key"}><Input type="password" value={apiKey} placeholder={isConfigured ? "••••••••••••••••" : undefined} onChange={(e) => setApiKey(e.target.value)} autoComplete="off" /></Field>
+    <div className="flex gap-3"><Button type="submit" className="h-10 w-fit px-4">{isConfigured ? "Update AI settings" : "Connect AI"}</Button>{isConfigured ? <Button type="button" variant="outline" onClick={async () => { await fetch("/api/v1/settings", { method: "DELETE" }); location.reload(); }}>Disconnect</Button> : null}</div>
     {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
   </form>;
 }
