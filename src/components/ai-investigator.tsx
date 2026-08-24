@@ -23,8 +23,6 @@ type ClaimResult = {
 
 type Result = {
   sale_id: string;
-  fault: string | null;
-  provider: string | null;
   agent: string;
   tool_calls: number;
   claims: ClaimResult[];
@@ -34,7 +32,7 @@ export function AiInvestigator({
   sales,
   status,
 }: {
-  sales: { sale_id: string; fault: string }[];
+  sales: { sale_id: string }[];
   status: { enabled: boolean; provider: string | null; name: string | null };
 }) {
   const [saleId, setSaleId] = useState(sales[0]?.sale_id ?? "");
@@ -50,7 +48,7 @@ export function AiInvestigator({
       const res = await fetch("/api/investigate", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sale_id: saleId, seed: 42 }),
+        body: JSON.stringify({ sale_id: saleId }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
@@ -91,10 +89,9 @@ export function AiInvestigator({
           </SelectTrigger>
           <SelectContent>
             {sales.map((s) => (
-              <SelectItem key={s.sale_id} value={s.sale_id} label={`${s.sale_id} ${s.fault}`}>
+              <SelectItem key={s.sale_id} value={s.sale_id} label={s.sale_id}>
                 <span className="flex min-w-0 flex-col items-start gap-0.5">
                   <span className="font-mono text-xs">{s.sale_id}</span>
-                  <span className="max-w-full truncate text-[11px] text-muted-foreground">{s.fault}</span>
                 </span>
               </SelectItem>
             ))}
@@ -119,7 +116,7 @@ export function AiInvestigator({
         <div className="mt-5">
           <p className="text-sm text-muted-foreground">
             {result.agent} made <span className="font-medium text-foreground">{result.tool_calls}</span> tool calls on{" "}
-            <span className="font-mono">{result.sale_id}</span> (planted {result.fault}).
+            <span className="font-mono">{result.sale_id}</span>.
           </p>
           <div className="mt-3 space-y-2">
             {result.claims.map((c) => {

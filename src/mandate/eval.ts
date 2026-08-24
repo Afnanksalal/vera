@@ -121,6 +121,7 @@ export function evaluate(config: Partial<FixtureConfig> = {}): EvalReport {
   if (plantedRecall < EVAL_GATES.minPlantedRecall) gateFailures.push("minPlantedRecall");
   if (falseProve > EVAL_GATES.maxFalseProve) gateFailures.push("maxFalseProve");
 
+  if (world.seed === null) throw new Error("Evaluation requires a seeded test fixture.");
   return {
     seed: world.seed,
     claimsProcessed: run.claims.length,

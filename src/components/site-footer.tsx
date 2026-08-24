@@ -20,23 +20,24 @@ export function SiteFooter() {
             <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
               Product
             </span>
-            <Link href="/ledger" className="text-muted-foreground hover:text-foreground">
-              Live ledger
+            <Link href="/app" className="text-muted-foreground hover:text-foreground">
+              Web console
             </Link>
             <Link href="/#how" className="text-muted-foreground hover:text-foreground">
               How it works
             </Link>
-            <a href="/api/ledger" className="text-muted-foreground hover:text-foreground">
-              JSON API
-            </a>
+            <Link href="/app/settings" className="text-muted-foreground hover:text-foreground">Settings</Link>
           </div>
           <div className="flex flex-col gap-2">
             <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              Run it
+              Trust
             </span>
-            <span className="font-mono text-xs text-muted-foreground">npm run dev</span>
-            <span className="font-mono text-xs text-muted-foreground">npm run mandate:eval</span>
-            <span className="font-mono text-xs text-muted-foreground">npm run mandate bundle</span>
+            <Link href="/app/closes" className="text-muted-foreground hover:text-foreground">
+              Signed closes
+            </Link>
+            <Link href="/app/settings" className="text-muted-foreground hover:text-foreground">
+              Installation settings
+            </Link>
           </div>
         </div>
       </div>

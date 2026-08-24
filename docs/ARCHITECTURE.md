@@ -1,28 +1,28 @@
 # Architecture
 
-This document explains how Vera is put together and why. It assumes you have read the project README.
+Vera is one self-hosted Next.js application with a framework-independent verification engine and SQLite persistence.
 
 ## The problem, stated precisely
 
-A human card sale joins cleanly: an order id, a payment id, and a settlement id line up, and a bank credit closes the loop. An agent sale does not. The authorization sits in a mandate, the basket in a merchant-signed cart, the money in a token or an on-chain transfer, and the payout in a lump that a bank narrates with its own reference. No single key runs through all of it. Reconciling on amount and date alone accepts several kinds of loss without noticing them.
+A human card sale often has an order, payment, and settlement identifier that can be joined directly. An agent sale distributes authorization and evidence across a principal mandate, agent identity, signed cart, payment rail, receipt, processor settlement, and bank narration. No single trustworthy key necessarily runs through all of it.
 
-Vera reframes a sale as a set of typed claims and closes the books only when each claim is either proven with evidence or flagged as an exception. A language model gathers evidence and proposes verdicts. A deterministic verifier re-derives each verdict from the raw rows and is the only component allowed to record a result.
+Vera reframes every sale as seven typed claims. A claim is committed only when its evidence can be reproduced from persisted workspace records. Amount-and-date similarity may propose a relationship, but it cannot prove authorization, receipt durability, idempotency, or settlement provenance.
 
-## Data model
+## Canonical data model
 
 ```mermaid
 erDiagram
   PRINCIPAL ||--o{ AGENT : delegates
   PRINCIPAL ||--o{ INTENT : signs
-  AGENT ||--o{ INTENT : "acts under"
+  AGENT ||--o{ INTENT : acts_under
   INTENT ||--|| CART : authorizes
-  MERCHANT ||--o{ CART : signs
+  MERCHANT ||--o{ CART : attests
   CART ||--|| PAYMENT : charges
   PAYMENT ||--o| RECEIPT : produces
   PAYMENT ||--|| ORDER : records
-  PAYMENT ||--|| SETTLEMENT : "settles in"
-  SETTLEMENT ||--o| BANKLINE : "paid out as"
-  PAYMENT ||--o{ REFUND : "may reverse"
+  PAYMENT ||--o| SETTLEMENT : settles_in
+  SETTLEMENT ||--o| BANKLINE : paid_out_as
+  PAYMENT ||--o{ REFUND : may_reverse
   SALE ||--|| INTENT : references
   SALE ||--|| CART : references
   SALE ||--|| PAYMENT : references
@@ -40,7 +40,7 @@ erDiagram
     string cart_id
     int total_paise
     string cart_hash
-    string merchant_sig
+    string merchant_signature
   }
   PAYMENT {
     string payment_id
@@ -49,121 +49,146 @@ erDiagram
     string idempotency_key
     string paid_at
   }
+  SETTLEMENT {
+    string settlement_id
+    int gross_paise
+    int fee_paise
+    int tax_paise
+    int net_paise
+    string settled_at
+  }
   BANKLINE {
     string bank_id
     int amount_paise
     string date
-    string intent_id
   }
 ```
 
-All money is stored as integer paise. There are no floating point amounts anywhere in the ledger.
+Money is stored as integer paise. Protocol adapters preserve absence: a missing mandate attestation, receipt, settlement, or bank credit remains absent in the canonical world.
 
-## The seven claims
+```mermaid
+flowchart LR
+  RZP[Razorpay API and webhooks] --> API[Authenticated ingestion API]
+  EXT[AP2 / ACP / x402 JSON] --> API
+  UI[Web console] --> API
+  API --> DB[(SQLite + persistent master key)]
+  DB --> ADAPT[Canonical adapters]
+  ADAPT --> WORLD[Canonical world]
+  WORLD --> INV[Policy or model investigator]
+  INV --> CHAL[Evidence challenger]
+  CHAL --> VER[Deterministic verifier]
+  VER --> CLAIMS[Claim ledger]
+  WORLD --> MATCH[Settlement reconciliation]
+  WORLD --> ANOM[Anomaly rule validation]
+  CLAIMS --> BUNDLE[Hash chain + installation signature]
+```
 
-For every sale, Vera resolves seven claims.
+## Runtime boundaries
 
-| Claim | Proven when | Exception |
-| --- | --- | --- |
-| Authorized | Intent signature valid; cart within budget, category, and time | `MANDATE_OVERSPEND`, `MANDATE_EXPIRED` |
-| Cart bound | Merchant signature valid, cart hash recomputes, payment equals cart total | `CART_PAYMENT_MISMATCH` |
-| Receipted | A stored receipt exists | `RECEIPT_ABSENT` |
-| Idempotent | One payment per idempotency key | `RETRY_DOUBLE_BOOK` |
-| Settled | Settlement net equals payment amount | `SETTLEMENT_DRIFT` |
-| Banked | Exactly one bank credit tagged to the intent | `CHANNEL_UNTAGGED` |
-| Refund policy | Refunds carry a mandate reference and do not collide | `ORPHAN_REFUND`, `DOUBLE_REFUND` |
+- `src/app`: authenticated web UI and HTTP routes.
+- `src/server`: persistence, credentials, policy, Razorpay, analysis orchestration, and installation signing identity.
+- `src/mandate`: pure canonicalization, evidence tools, investigation, challenge, verification, reconciliation, anomaly validation, and bundles.
 
-## The close pipeline
+Runtime code never constructs generated fixtures. Synthetic worlds and calibration datasets are test-only. Razorpay settlement sync consumes the official monthly recon response and preserves its gross, fee, tax, net credit, settlement ID, and UTR. The UTR remains processor provenance; it is not promoted into bank-statement evidence.
+
+## Canonical close
+
+Every ingested protocol record is normalized to principals, agents, intents, carts, payments, receipts, orders, settlements, bank lines, refunds, and sales. A close materializes seven claims for every sale:
+
+1. `AUTHORIZED`
+2. `CART_BOUND`
+3. `RECEIPTED`
+4. `IDEMPOTENT`
+5. `SETTLED`
+6. `BANKED`
+7. `REFUND_POLICY`
+
+The investigator can only propose. The challenger replays cited tool calls. The verifier checks transcript membership, result hashes, cited row existence, open challenges, and an independent decision before committing.
 
 ```mermaid
 flowchart TD
-  START[Materialize 7 claims per sale] --> INV[Investigator]
-  INV -->|tool calls recorded| TR[Transcript]
-  INV -->|proposal with evidence| CHAL[Challenger]
-  CHAL -->|replay each tool| CHK{Hashes reproduce?}
-  CHK -->|no| DIS[Challenge raised]
-  CHK -->|yes| AUD[Re-derive decision from raw rows]
-  AUD --> VER{Verifier}
-  DIS --> VER
-  VER -->|evidence in transcript,<br/>hashes match, rows exist,<br/>no open challenge,<br/>audit agrees| COMMIT[PROVEN or EXCEPTED]
-  VER -->|otherwise| ABSTAIN[OPEN, then abstained]
+  START[Materialize seven claims per sale] --> INV[Investigator gathers evidence]
+  INV --> PROP[Proposal plus cited rows and result hashes]
+  PROP --> CHAL[Challenger replays every tool call]
+  CHAL -->|evidence changed or verdict disagrees| REJECT[Reject proposal]
+  CHAL -->|reproducible| VER{Deterministic verifier}
+  VER -->|supported| COMMIT[Commit proven or excepted]
+  VER -->|insufficient support| ABSTAIN[Abstain to review]
+  COMMIT --> AUDIT[Append hash-chained audit events]
+  ABSTAIN --> AUDIT
+  AUDIT --> SIGN[Sign close with installation identity]
 ```
 
-The verifier accepts a proposal only when the evidence appears in the run transcript, each cited tool re-runs to the same hash, every cited row exists, no challenge is open, and an independent re-derivation agrees on the action and code. A proposal that lies about a fault is rejected, and the claim is abstained rather than booked.
+### Why three roles exist
 
-## Investigator, live model version
+- The investigator optimizes for finding relevant evidence and may be probabilistic.
+- The challenger catches altered transcripts, stale tool output, missing cited rows, and proposals that disagree with a fresh decision.
+- The verifier is deliberately narrow and deterministic. It is the only component allowed to mutate claim state.
+
+This separation permits model-assisted investigation without treating generated text as financial evidence.
+
+## Reconciliation and anomalies
+
+Settlement-to-bank reconciliation is a subset-sum problem. The deterministic path commits only unique feasible assignments and abstains on ambiguity. An optional model may propose semantic groupings using narration tokens, but `verifyAssignment` enforces exact sums, date windows, known identifiers, and no settlement reuse.
+
+Cross-sale anomaly rules execute in a constrained DSL. Rules must fire on a sufficiently small and coherent group before they are routed to human review. Model-authored rules receive the same deterministic validation as built-in discovery.
+
+Selective risk control is enabled only from labelled historical match outcomes imported by the operator. Vera calibrates a threshold and Clopper–Pearson upper error bound from those production labels. Without labels the console explicitly withholds a guarantee; synthetic calibration data is never substituted at runtime.
+
+## Persistence and configuration
+
+Configuration belongs to the database and is edited in `/app/settings`. Secrets are encrypted with the installation master key. The master key itself is generated once in the persistent `data/` directory, outside the database to avoid storing ciphertext and its wrapping key together.
+
+Each installation generates one Ed25519 audit identity. Its private key is encrypted in SQLite; its public key can be exported from the web console. A bundle is trusted only when its internal checks pass and its signer equals the installation identity.
+
+```mermaid
+flowchart LR
+  OWNER[Installation owner] --> SETTINGS[/app/settings]
+  SETTINGS --> VALIDATE[Server-side validation]
+  VALIDATE --> ENC[Envelope encryption]
+  ENC --> DB[(SQLite settings)]
+  MASTER[data/.master_key] --> ENC
+  MASTER --> SESSION[Session signing and API-key pepper]
+  MASTER --> IDENTITY[Encrypted Ed25519 private key]
+```
+
+The database and master key form one backup unit. Restoring only the database preserves ciphertext but not the ability to decrypt it. Restoring only the key preserves no application state.
+
+## Request and trust boundaries
+
+| Boundary | Control |
+| --- | --- |
+| Browser session | HttpOnly, SameSite cookies; HTTPS-aware Secure flag; CSRF origin enforcement |
+| Integration API | Hashed bearer API keys scoped to a workspace |
+| Razorpay webhook | Per-workspace HMAC verification before ingestion |
+| Stored provider credentials | Encrypted with the installation master key |
+| Workspace data | Every query and mutation is scoped by authenticated user id |
+| Model output | Proposal only; deterministic replay and verification before mutation |
+| Evidence bundle | Canonical hashes, event-chain verification, replay, signature, and trusted signer match |
+
+## Close and bundle sequence
 
 ```mermaid
 sequenceDiagram
-  participant M as Model
-  participant T as Tools
-  participant V as Verifier
-  M->>T: get_payment, verify_cart_sig, ...
-  T-->>M: rows (recorded in transcript)
-  M->>V: submit_verdict(action, code) + evidence
-  V->>T: re-run each cited tool
-  T-->>V: same rows
-  V->>V: re-derive decision from raw data
-  alt evidence and audit agree
-    V-->>M: committed
-  else mismatch or tamper
-    V-->>M: rejected, claim abstained
-  end
+  participant U as Web console
+  participant S as Vera server
+  participant E as Verification engine
+  participant D as SQLite
+  participant K as Installation signer
+
+  U->>S: Run close
+  S->>D: Load authenticated workspace records
+  S->>E: Build canonical world and materialize claims
+  E->>E: Investigate, challenge, verify
+  E-->>S: Claims plus hash-chained audit events
+  S->>K: Sign canonical chain head
+  S->>D: Commit close, claims, events, and bundle
+  S-->>U: Close summary and claim grid
+  U->>S: Download or verify bundle
+  S->>K: Compare bundle signer with installation identity
+  S-->>U: Chain, replay, signature, and identity result
 ```
 
-The model reasons and chooses tools. It cannot set a claim's status. Swapping the deterministic investigator for the model changes who proposes, not who decides.
+## Deployment
 
-## Combinatorial matching
-
-Lumped payouts make reconciliation a subset-sum problem: one bank credit equals a sum of settlements within a tolerance, and each settlement belongs to at most one credit.
-
-```mermaid
-flowchart LR
-  P[Bank credits and settlement units] --> PROP[Proposer]
-  PROP -->|model: groupings from<br/>amounts, dates, tokens| SOLVE{Verify each group}
-  PROP -->|deterministic: constraint<br/>propagation| SOLVE
-  SOLVE -->|exact sum, in window,<br/>no reuse| COMMIT[Matched]
-  SOLVE -->|fails| FALL[Fallback search]
-  FALL --> COMMIT
-  SOLVE -->|several feasible| AMB[Ambiguous, abstained]
-  SOLVE -->|none feasible| UNEX[Unexplained]
-```
-
-The fixture includes a group with more members than the deterministic search cap, so the deterministic pass reports it as unexplained while the model recovers it and the solver confirms the exact sum. This is a concrete case where the model earns its place without being trusted.
-
-## Conformal risk control
-
-A deliberately fallible matcher assigns each credit a confidence score. Split-conformal calibration turns that score into an accept-or-abstain rule with a stated guarantee.
-
-```mermaid
-flowchart LR
-  CAL[Calibration books] --> SCORE[Score each match]
-  SCORE --> THRESH[Pick largest threshold with<br/>Clopper-Pearson upper bound <= alpha]
-  THRESH --> TEST[Held-out books]
-  TEST --> REPORT[Coverage and accepted-error rate]
-```
-
-The reported match rate then carries a bound: among accepted matches, the error stays at or below the target with high probability, and the remainder is sent to a person.
-
-## Open-world anomaly synthesis
-
-Some risks are patterns across sales that individually pass every claim. One example is limit evasion: an agent splits spend into several carts, each just under its cap, within a short window.
-
-```mermaid
-flowchart TD
-  FEAT[Per-sale features] --> PROP[Propose a rule<br/>model or grid search]
-  PROP --> EVAL[Execute rule over the batch]
-  EVAL --> VAL{Coverage and coherence}
-  VAL -->|fires on a small,<br/>concentrated slice| REVIEW[Human review]
-  VAL -->|fires on everything<br/>or nothing| REJECT[Rejected]
-```
-
-Rules are expressed in a small language with a fixed set of fields and operators, so nothing arbitrary executes. A rule that flags the whole batch is rejected. Accepted findings are routed to a person and never actioned on their own.
-
-## Tamper-evident record
-
-Every tool call and every verdict is appended to a hash chain, where each entry commits to the one before it. The chain head is signed with an ed25519 key and packaged with the world and the committed claims into a bundle. A third party recomputes the chain, checks the signature against the included public key, confirms the world hash, and replays the close. Any edit, reorder, or deletion is detected.
-
-## Determinism and testing
-
-The fixture is generated from a seed, and the answer key is derived at generation time, not by running the system against itself. The verifier reads the same raw data an auditor would. Tests cover the fixture, each tool, both verifier paths, the model loop with scripted stand-ins, the solver and its checker, the conformal guarantee on held-out data, and anomaly discovery and validation.
+Use one Node.js process per SQLite database, a persistent local volume for `data/`, and an HTTPS reverse proxy. Horizontal application replicas require replacing SQLite with a transactional shared database and are outside the current deployment contract.

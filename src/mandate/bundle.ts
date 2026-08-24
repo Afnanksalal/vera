@@ -8,7 +8,7 @@ import {
   verifyHead,
   type AuditEvent,
 } from "./audit";
-import { runClose } from "./orchestrate";
+import { runClose, type RunResult } from "./orchestrate";
 import type { Claim, World } from "./types";
 
 export type AuditBundle = {
@@ -39,9 +39,9 @@ export type AuditBundle = {
 export function exportBundle(
   world: World,
   now: string = new Date().toISOString(),
-  keypair = newAuditorKeypair()
+  keypair = newAuditorKeypair(),
+  run: RunResult = runClose(world)
 ): AuditBundle {
-  const run = runClose(world);
   const events = buildChain(run);
   const head = chainHead(events);
   const signature = signHead(keypair.privateKeyPem, head);

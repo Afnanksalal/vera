@@ -1,6 +1,6 @@
 import type { Labelled } from "../conformal";
 import type { MatchAnswerKey } from "./fixture";
-import { searchGroupings, verifyAssignment, type Assignment, type MatchProblem } from "./solver";
+import { searchGroupingsDetailed, verifyAssignment, type Assignment, type MatchProblem } from "./solver";
 
 export type FuzzyMatch = {
   credit_id: string;
@@ -29,15 +29,16 @@ export function fuzzyReconcile(problem: MatchProblem): FuzzyResult {
 
   // Most-constrained-first improves greedy quality without removing ambiguity.
   const order = [...problem.credits].sort((a, b) => {
-    const fa = searchGroupings(problem, a).length;
-    const fb = searchGroupings(problem, b).length;
+    const fa = searchGroupingsDetailed(problem, a).groups.length;
+    const fb = searchGroupingsDetailed(problem, b).groups.length;
     return fa - fb;
   });
 
   for (const credit of order) {
     const scoped: MatchProblem = { ...problem, units: problem.units.filter((u) => !used.has(u.id)) };
-    const feas = searchGroupings(scoped, credit);
-    if (feas.length === 0) {
+    const search = searchGroupingsDetailed(scoped, credit);
+    const feas = search.groups;
+    if (search.truncated || feas.length === 0) {
       unexplained.push(credit.id);
       continue;
     }
@@ -76,8 +77,9 @@ function sumOf(problem: MatchProblem, unitIds: string[]): number {
 export function scoreCredits(problem: MatchProblem): FuzzyMatch[] {
   const out: FuzzyMatch[] = [];
   for (const credit of problem.credits) {
-    const feas = searchGroupings(problem, credit);
-    if (feas.length === 0) continue; // unexplained, not a match decision
+    const search = searchGroupingsDetailed(problem, credit);
+    const feas = search.groups;
+    if (search.truncated || feas.length === 0) continue; // computationally unsafe or unexplained
     const pick = [...feas].sort((x, y) => {
       if (x.length !== y.length) return x.length - y.length;
       const sx = Math.abs(sumOf(problem, x) - credit.amount_paise);

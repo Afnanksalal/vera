@@ -1,6 +1,6 @@
 import type { ChatMessage, ChatModel, ChatToolSpec } from "../llm";
 import {
-  searchGroupings,
+  searchGroupingsDetailed,
   verifyAssignment,
   type Assignment,
   type MatchItem,
@@ -25,14 +25,15 @@ export type ReconResult = {
   verify: VerifyResult;
   coverage: { credits: number; matched: number; abstained: number };
   source: string;
+  search_truncated_credit_ids: string[];
 };
 
-function feasibleFor(problem: MatchProblem, credit: MatchItem, usedUnits: Set<string>): string[][] {
+function feasibleFor(problem: MatchProblem, credit: MatchItem, usedUnits: Set<string>) {
   const scoped: MatchProblem = {
     ...problem,
     units: problem.units.filter((u) => !usedUnits.has(u.id)),
   };
-  return searchGroupings(scoped, credit);
+  return searchGroupingsDetailed(scoped, credit);
 }
 
 /**
@@ -46,16 +47,18 @@ export function reconcileDeterministic(problem: MatchProblem): ReconResult {
   const used = new Set<string>();
   const resolved = new Map<string, string[]>();
   const creditById = new Map(problem.credits.map((c) => [c.id, c]));
+  const truncated = new Set<string>();
 
   let progressed = true;
   while (progressed) {
     progressed = false;
     for (const credit of problem.credits) {
       if (resolved.has(credit.id)) continue;
-      const feas = feasibleFor(problem, credit, used);
-      if (feas.length === 1) {
-        resolved.set(credit.id, feas[0]);
-        feas[0].forEach((id) => used.add(id));
+      const search = feasibleFor(problem, credit, used);
+      if (search.truncated) truncated.add(credit.id);
+      if (!search.truncated && search.groups.length === 1) {
+        resolved.set(credit.id, search.groups[0]);
+        search.groups[0].forEach((id) => used.add(id));
         progressed = true;
       }
     }
@@ -65,12 +68,13 @@ export function reconcileDeterministic(problem: MatchProblem): ReconResult {
   const unexplained: string[] = [];
   for (const credit of problem.credits) {
     if (resolved.has(credit.id)) continue;
-    const feas = feasibleFor(problem, credit, used);
-    if (feas.length === 0) unexplained.push(credit.id);
+    const search = feasibleFor(problem, credit, used);
+    if (search.truncated) truncated.add(credit.id);
+    if (!search.truncated && search.groups.length === 0) unexplained.push(credit.id);
     else ambiguous.push(credit.id);
   }
 
-  return assemble(problem, resolved, ambiguous, unexplained, used, "deterministic", creditById);
+  return assemble(problem, resolved, ambiguous, unexplained, used, "deterministic", creditById, undefined, truncated);
 }
 
 function assemble(
@@ -81,15 +85,16 @@ function assemble(
   used: Set<string>,
   source: string,
   creditById: Map<string, MatchItem>,
-  methodOverride?: Map<string, Match["method"]>
+  methodOverride?: Map<string, Match["method"]>,
+  truncated = new Set<string>()
 ): ReconResult {
   const assignment: Assignment = [...resolved.entries()].map(([credit_id, unit_ids]) => ({ credit_id, unit_ids }));
   const verify = verifyAssignment(problem, assignment);
 
   const matches: Match[] = [...resolved.entries()].map(([credit_id, unit_ids]) => {
     const credit = creditById.get(credit_id)!;
-    const feas = feasibleFor(problem, credit, new Set([...used].filter((id) => !unit_ids.includes(id))));
-    const feasible_count = Math.max(1, feas.length);
+    const search = feasibleFor(problem, credit, new Set([...used].filter((id) => !unit_ids.includes(id))));
+    const feasible_count = Math.max(1, search.groups.length);
     return {
       credit_id,
       unit_ids,
@@ -114,6 +119,7 @@ function assemble(
       abstained: ambiguous.length,
     },
     source,
+    search_truncated_credit_ids: [...truncated],
   };
 }
 
@@ -187,6 +193,7 @@ export async function reconcileWithModel(model: ChatModel, problem: MatchProblem
   const used = new Set<string>();
   const resolved = new Map<string, string[]>();
   const method = new Map<string, Match["method"]>();
+  const truncated = new Set<string>();
   for (const group of proposed) {
     if (resolved.has(group.credit_id)) continue;
     if (!creditById.has(group.credit_id)) continue;
@@ -206,10 +213,11 @@ export async function reconcileWithModel(model: ChatModel, problem: MatchProblem
     progressed = false;
     for (const credit of problem.credits) {
       if (resolved.has(credit.id)) continue;
-      const feas = feasibleFor(problem, credit, used);
-      if (feas.length === 1) {
-        resolved.set(credit.id, feas[0]);
-        feas[0].forEach((id) => used.add(id));
+      const search = feasibleFor(problem, credit, used);
+      if (search.truncated) truncated.add(credit.id);
+      if (!search.truncated && search.groups.length === 1) {
+        resolved.set(credit.id, search.groups[0]);
+        search.groups[0].forEach((id) => used.add(id));
         method.set(credit.id, "propagated");
         progressed = true;
       }
@@ -220,10 +228,11 @@ export async function reconcileWithModel(model: ChatModel, problem: MatchProblem
   const unexplained: string[] = [];
   for (const credit of problem.credits) {
     if (resolved.has(credit.id)) continue;
-    const feas = feasibleFor(problem, credit, used);
-    if (feas.length === 0) unexplained.push(credit.id);
+    const search = feasibleFor(problem, credit, used);
+    if (search.truncated) truncated.add(credit.id);
+    if (!search.truncated && search.groups.length === 0) unexplained.push(credit.id);
     else ambiguous.push(credit.id);
   }
 
-  return assemble(problem, resolved, ambiguous, unexplained, used, `llm:${model.name}`, creditById, method);
+  return assemble(problem, resolved, ambiguous, unexplained, used, `llm:${model.name}`, creditById, method, truncated);
 }

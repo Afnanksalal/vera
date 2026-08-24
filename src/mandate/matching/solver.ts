@@ -25,16 +25,17 @@ function within(aDate: string, bDate: string, windowDays: number): boolean {
 
 /**
  * Enumerate every set of units (inside the date window) whose amounts sum to a
- * credit within tolerance. Backtracking with pruning; capped on subset size and
- * number of results so ambiguity is detected without exploding.
+ * credit within tolerance. The search has an explicit work budget. Callers
+ * must treat a truncated search as ambiguous; it is never evidence that a
+ * match is unique or absent.
  */
-export function searchGroupings(
+export function searchGroupingsDetailed(
   problem: MatchProblem,
   credit: MatchItem,
-  opts: { maxSubset?: number; maxResults?: number } = {}
-): string[][] {
-  const maxSubset = opts.maxSubset ?? 4;
-  const maxResults = opts.maxResults ?? 8;
+  opts: { maxResults?: number; maxNodes?: number } = {}
+): { groups: string[][]; truncated: boolean; explored_nodes: number } {
+  const maxResults = opts.maxResults ?? 9;
+  const maxNodes = opts.maxNodes ?? 250_000;
   const pool = problem.units
     .filter((u) => within(u.date, credit.date, problem.window_days))
     .filter((u) => u.amount_paise <= credit.amount_paise + problem.tolerance_paise)
@@ -42,26 +43,36 @@ export function searchGroupings(
 
   const results: string[][] = [];
   const chosen: MatchItem[] = [];
+  let explored = 0;
+  let truncated = false;
 
   const recurse = (start: number, sum: number): void => {
-    if (results.length >= maxResults) return;
+    explored += 1;
+    if (explored > maxNodes || results.length >= maxResults) {
+      truncated = true;
+      return;
+    }
     if (Math.abs(sum - credit.amount_paise) <= problem.tolerance_paise && chosen.length > 0) {
       results.push(chosen.map((c) => c.id));
       // keep searching for alternative groupings (ambiguity), do not return
     }
-    if (chosen.length >= maxSubset) return;
     for (let i = start; i < pool.length; i++) {
       const next = sum + pool[i].amount_paise;
       if (next > credit.amount_paise + problem.tolerance_paise) continue; // prune (sorted desc)
       chosen.push(pool[i]);
       recurse(i + 1, next);
       chosen.pop();
-      if (results.length >= maxResults) return;
+      if (truncated) return;
     }
   };
 
   recurse(0, 0);
-  return results;
+  return { groups: results, truncated, explored_nodes: explored };
+}
+
+/** Compatibility helper for tests and diagnostics that only need candidates. */
+export function searchGroupings(problem: MatchProblem, credit: MatchItem): string[][] {
+  return searchGroupingsDetailed(problem, credit).groups;
 }
 
 export type VerifyResult = {

@@ -1,8 +1,9 @@
 /**
  * Split-conformal selective prediction (CIC-style). Given a labelled calibration
  * set of (score, correct) pairs, pick the most permissive acceptance threshold
- * whose Clopper-Pearson upper bound on the accepted-error rate stays at or below
- * a target alpha, with confidence 1 - delta. Distribution-free and model-agnostic.
+ * whose simultaneous Clopper-Pearson upper bound on accepted error stays at or
+ * below alpha. Bonferroni correction covers data-driven threshold selection,
+ * so the full threshold search has confidence at least 1 - delta.
  *
  * Lower score = more confident. We accept when score <= threshold.
  */
@@ -105,6 +106,7 @@ export type Calibration = {
  */
 export function calibrate(labelled: Labelled[], alpha: number, delta: number): Calibration {
   const candidates = [...new Set(labelled.map((l) => l.score))].sort((a, b) => a - b);
+  const perThresholdDelta = delta / Math.max(1, candidates.length);
   let best: Calibration = {
     threshold: null,
     alpha,
@@ -117,7 +119,7 @@ export function calibrate(labelled: Labelled[], alpha: number, delta: number): C
   for (const tau of candidates) {
     const accepted = labelled.filter((l) => l.score <= tau);
     const errors = accepted.filter((l) => !l.correct).length;
-    const ub = clopperPearsonUpper(errors, accepted.length, delta);
+    const ub = clopperPearsonUpper(errors, accepted.length, perThresholdDelta);
     if (ub <= alpha && accepted.length >= best.accepted) {
       best = {
         threshold: tau,

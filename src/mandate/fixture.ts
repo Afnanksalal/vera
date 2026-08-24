@@ -42,12 +42,18 @@ export const DEFAULT_CONFIG: FixtureConfig = {
   slackRupees: { min: 500, max: 3000 },
   deltaRupees: { min: 200, max: 2500 },
   plants: {
+    MANDATE_ATTESTATION_MISSING: 0,
+    MANDATE_ATTESTATION_INVALID: 0,
     MANDATE_OVERSPEND: 4,
     MANDATE_EXPIRED: 3,
+    CART_ATTESTATION_MISSING: 0,
+    CART_ATTESTATION_INVALID: 0,
     CART_PAYMENT_MISMATCH: 4,
     RECEIPT_ABSENT: 5,
     RETRY_DOUBLE_BOOK: 3,
+    SETTLEMENT_ABSENT: 0,
     SETTLEMENT_DRIFT: 3,
+    BANK_CREDIT_ABSENT: 0,
     CHANNEL_UNTAGGED: 2,
     ORPHAN_REFUND: 2,
     DOUBLE_REFUND: 2,
@@ -255,6 +261,9 @@ export function buildFixture(overrides: Partial<FixtureConfig> = {}): Fixture {
     world.settlements.push({
       settlement_id,
       payment_id,
+      gross_paise: amount,
+      fee_paise: 0,
+      tax_paise: 0,
       net_paise: net,
       psp_ref: `psp_${pad(index)}`,
       settled_on: settledOn,
@@ -388,7 +397,7 @@ export function buildFixture(overrides: Partial<FixtureConfig> = {}): Fixture {
       world.receipts.push({ receipt_id: `rcp_${pad(index)}`, payment_id, payload_hash: sha256({ payment_id, total }), stored: true });
       world.orders.push({ order_id, cart_id, payment_id });
       const settledOn = dayISO(config.weekStart, 6);
-      world.settlements.push({ settlement_id, payment_id, net_paise: total, psp_ref: `psp_${pad(index)}`, settled_on: settledOn });
+      world.settlements.push({ settlement_id, payment_id, gross_paise: total, fee_paise: 0, tax_paise: 0, net_paise: total, psp_ref: `psp_${pad(index)}`, settled_on: settledOn });
       world.bank.push({ bank_id: `bnk_${pad(index)}`, amount_paise: total, date: settledOn, narration: "NEFT CR AGENT SETTLEMENT", intent_id });
 
       world.sales.push({ sale_id, intent_id, cart_id, payment_id, order_id, settlement_id, fault: null });

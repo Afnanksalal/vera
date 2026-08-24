@@ -47,8 +47,8 @@ export function extractFeatures(world: World): SaleFeature[] {
   const payById = new Map(world.payments.map((p) => [p.payment_id, p]));
   const features: SaleFeature[] = [];
   for (const sale of world.sales) {
-    const intent = intentById.get(sale.intent_id);
-    const cart = cartById.get(sale.cart_id);
+    const intent = sale.intent_id ? intentById.get(sale.intent_id) : undefined;
+    const cart = sale.cart_id ? cartById.get(sale.cart_id) : undefined;
     const pay = payById.get(sale.payment_id);
     if (!intent || !cart || !pay) continue;
     features.push({

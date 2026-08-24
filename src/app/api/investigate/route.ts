@@ -1,38 +1,26 @@
-import { NextResponse } from "next/server";
 import { investigateSale } from "@/mandate/agent";
-import { buildFixture } from "@/mandate/fixture";
-import { getModelFromEnv, modelStatus } from "@/mandate/llm";
 import { finalizeClose } from "@/mandate/orchestrate";
 import { Transcript } from "@/mandate/transcript";
 import type { Verdict } from "@/mandate/verifier";
+import { worldForUser } from "@/server/analysis";
+import { assertSameOriginIfCookie, handle, readJson, requireUser, HttpError } from "@/server/http";
+import { modelForUser } from "@/server/settings";
+import { rateLimit } from "@/server/policy";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 export async function POST(req: Request) {
-  const model = getModelFromEnv();
-  const status = modelStatus();
-  if (!model) {
-    return NextResponse.json(
-      { error: "No AI model configured. Set ANTHROPIC_API_KEY (or OPENAI_API_KEY)." },
-      { status: 400 }
-    );
-  }
-
-  let body: { sale_id?: string; seed?: number } = {};
-  try {
-    body = (await req.json()) as { sale_id?: string; seed?: number };
-  } catch {
-    /* empty body ok */
-  }
-  const seed = Number.isInteger(body.seed) ? (body.seed as number) : 42;
-  const { world } = buildFixture({ seed });
-  const sale =
-    world.sales.find((s) => s.sale_id === body.sale_id) ??
-    world.sales.find((s) => s.fault) ??
-    world.sales[0];
-
-  try {
+  return handle(async () => {
+    await assertSameOriginIfCookie();
+    const user = await requireUser();
+    if (!rateLimit(`investigate:${user.id}`, 10, 60_000)) return Response.json({ error: "Investigation rate limit reached.", code: "rate_limited" }, { status: 429 });
+    const model = modelForUser(user.id);
+    if (!model) throw new HttpError(400, "Configure an AI provider in Settings first.", "ai_not_configured");
+    const body = (await readJson(req, 8_192)) as { sale_id?: string };
+    const world = worldForUser(user.id);
+    const sale = world.sales.find((item) => item.sale_id === body.sale_id);
+    if (!sale) throw new HttpError(404, "Sale not found.", "not_found");
     const transcript = new Transcript(world);
     const { proposals, report } = await investigateSale(model, world, sale, transcript);
     const run = finalizeClose(
@@ -63,15 +51,11 @@ export async function POST(req: Request) {
       };
     });
 
-    return NextResponse.json({
+    return Response.json({
       sale_id: sale.sale_id,
-      fault: sale.fault,
-      provider: status.provider,
       agent: model.name,
       tool_calls: report.toolCalls,
       claims,
     });
-  } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
-  }
+  });
 }

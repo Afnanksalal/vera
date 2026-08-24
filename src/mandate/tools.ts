@@ -21,6 +21,7 @@ export type ToolName =
   | "get_receipt"
   | "settlement_for_payment"
   | "bank_candidates"
+  | "bank_lines_in_window"
   | "refunds_for_payment";
 
 export type ToolFn = (world: World, args: Record<string, unknown>) => unknown;
@@ -58,10 +59,15 @@ export const TOOLS: Record<ToolName, ToolFn> = {
 
   verify_intent_sig(world, args) {
     const intent = findIntent(world, req(args, "intent_id"));
-    if (!intent) return { found: false, valid: false };
+    if (!intent) return { found: false, valid: false, has_key: false, has_signature: false };
     const key = world.keys.principals[intent.principal_id];
     const { signature, ...payload } = intent;
-    return { found: true, valid: key ? hmacVerify(key, payload, signature) : false };
+    return {
+      found: true,
+      valid: key && signature ? hmacVerify(key, payload, signature) : false,
+      has_key: Boolean(key),
+      has_signature: Boolean(signature),
+    };
   },
 
   get_cart(world, args) {
@@ -70,7 +76,7 @@ export const TOOLS: Record<ToolName, ToolFn> = {
 
   verify_cart_sig(world, args) {
     const cart = findCart(world, req(args, "cart_id"));
-    if (!cart) return { found: false, valid: false, hash_match: false };
+    if (!cart) return { found: false, valid: false, hash_match: false, has_key: false, has_signature: false, has_hash: false };
     const key = world.keys.merchants[cart.merchant_id];
     const recomputed = sha256({
       intent_id: cart.intent_id,
@@ -82,10 +88,16 @@ export const TOOLS: Record<ToolName, ToolFn> = {
     const sigOk = key
       ? hmacVerify(key, { cart_id: cart.cart_id, cart_hash: cart.cart_hash }, cart.merchant_sig)
       : false;
+    const lineTotal = cart.lines.reduce((sum, line) => sum + line.qty * line.unit_paise, 0);
     return {
       found: true,
       valid: sigOk,
       hash_match: recomputed === cart.cart_hash,
+      has_key: Boolean(key),
+      has_signature: Boolean(cart.merchant_sig),
+      has_hash: Boolean(cart.cart_hash),
+      line_total_match: Number.isSafeInteger(lineTotal) && lineTotal === cart.total_paise,
+      line_total_paise: lineTotal,
       recomputed_hash: recomputed,
       stored_hash: cart.cart_hash,
     };
@@ -149,6 +161,14 @@ export const TOOLS: Record<ToolName, ToolFn> = {
         Math.abs(Date.parse(line.date) - target) <= window
     );
     return lines;
+  },
+
+  bank_lines_in_window(world, args) {
+    const date = req(args, "date");
+    const windowDays = reqNum(args, "window_days");
+    const target = Date.parse(date);
+    const window = windowDays * 86_400_000;
+    return world.bank.filter((line) => Math.abs(Date.parse(line.date) - target) <= window);
   },
 
   refunds_for_payment(world, args) {

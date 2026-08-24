@@ -65,6 +65,15 @@ export const TOOL_SPECS: ChatToolSpec[] = [
       required: ["amount_paise", "date", "window_days"],
     },
   },
+  {
+    name: "bank_lines_in_window",
+    description: "List bank credits near a settlement date regardless of amount, to distinguish missing bank evidence from lumped or untagged credits.",
+    parameters: {
+      type: "object",
+      properties: { date: { type: "string" }, window_days: { type: "number" } },
+      required: ["date", "window_days"],
+    },
+  },
   { name: "refunds_for_payment", description: "List refunds against a payment.", parameters: strArg("payment_id", "the payment id") },
   {
     name: "submit_verdict",
@@ -82,21 +91,22 @@ export const TOOL_SPECS: ChatToolSpec[] = [
   },
 ];
 
-/** Live OpenAI-compatible model. Enabled only when OPENAI_API_KEY is present. */
+/** Live OpenAI-compatible model. Credentials are supplied by the server settings store. */
 export class OpenAiModel implements ChatModel {
   readonly name: string;
   private readonly apiKey: string;
   private readonly baseUrl: string;
 
-  constructor(opts?: { apiKey?: string; baseUrl?: string; model?: string }) {
-    this.apiKey = opts?.apiKey ?? process.env.OPENAI_API_KEY ?? "";
-    this.baseUrl = (opts?.baseUrl ?? process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1").replace(/\/$/, "");
-    this.name = opts?.model ?? process.env.OPENAI_MODEL ?? "gpt-4o-mini";
-    if (!this.apiKey) throw new Error("OpenAiModel requires OPENAI_API_KEY");
+  constructor(opts: { apiKey: string; baseUrl: string; model: string }) {
+    this.apiKey = opts.apiKey;
+    this.baseUrl = opts.baseUrl.replace(/\/$/, "");
+    this.name = opts.model;
+    if (!this.apiKey || !this.baseUrl || !this.name) throw new Error("OpenAiModel requires explicit credentials, base URL, and model");
   }
 
   async complete(messages: ChatMessage[], tools: ChatToolSpec[]): Promise<ChatCompletion> {
     const res = await fetch(`${this.baseUrl}/chat/completions`, {
+      signal: AbortSignal.timeout(60_000),
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${this.apiKey}` },
       body: JSON.stringify({
@@ -140,17 +150,17 @@ type AnthropicBlock =
   | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }
   | { type: "tool_result"; tool_use_id: string; content: string };
 
-/** Live Anthropic (Claude) model. Enabled when ANTHROPIC_API_KEY is present. */
+/** Live Anthropic (Claude) model. Credentials are supplied by the server settings store. */
 export class AnthropicModel implements ChatModel {
   readonly name: string;
   private readonly apiKey: string;
   private readonly baseUrl: string;
 
-  constructor(opts?: { apiKey?: string; baseUrl?: string; model?: string }) {
-    this.apiKey = opts?.apiKey ?? process.env.ANTHROPIC_API_KEY ?? "";
-    this.baseUrl = (opts?.baseUrl ?? process.env.ANTHROPIC_BASE_URL ?? "https://api.anthropic.com").replace(/\/$/, "");
-    this.name = opts?.model ?? process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5";
-    if (!this.apiKey) throw new Error("AnthropicModel requires ANTHROPIC_API_KEY");
+  constructor(opts: { apiKey: string; baseUrl: string; model: string }) {
+    this.apiKey = opts.apiKey;
+    this.baseUrl = opts.baseUrl.replace(/\/$/, "");
+    this.name = opts.model;
+    if (!this.apiKey || !this.baseUrl || !this.name) throw new Error("AnthropicModel requires explicit credentials, base URL, and model");
   }
 
   async complete(messages: ChatMessage[], tools: ChatToolSpec[]): Promise<ChatCompletion> {
@@ -183,6 +193,7 @@ export class AnthropicModel implements ChatModel {
     }
 
     const res = await fetch(`${this.baseUrl}/v1/messages`, {
+      signal: AbortSignal.timeout(60_000),
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -207,20 +218,4 @@ export class AnthropicModel implements ChatModel {
     }
     return { content, tool_calls };
   }
-}
-
-export function getModelFromEnv(): ChatModel | null {
-  if (process.env.ANTHROPIC_API_KEY) return new AnthropicModel();
-  if (process.env.OPENAI_API_KEY) return new OpenAiModel();
-  return null;
-}
-
-export function modelStatus(): { enabled: boolean; provider: string | null; name: string | null } {
-  if (process.env.ANTHROPIC_API_KEY) {
-    return { enabled: true, provider: "anthropic", name: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5" };
-  }
-  if (process.env.OPENAI_API_KEY) {
-    return { enabled: true, provider: "openai", name: process.env.OPENAI_MODEL ?? "gpt-4o-mini" };
-  }
-  return { enabled: false, provider: null, name: null };
 }

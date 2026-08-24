@@ -1,7 +1,7 @@
 {
   "name": "vera-mandate-ledger",
   "version": "0.1.0",
-  "private": false,
+  "private": true,
   "description": "Vera reconciles agent-originated purchases across AP2, ACP, and x402, proving or flagging every step with a verifier that keeps the model honest.",
   "license": "MIT",
   "author": "afnanksalal",
@@ -21,21 +21,25 @@
     "nextjs",
     "typescript"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "next dev --port 43147 --hostname 0.0.0.0",
     "build": "next build",
     "start": "next start --port 43147 --hostname 0.0.0.0",
     "lint": "eslint",
-    "test": "node --import tsx --test 'src/mandate/**/*.test.ts'",
-    "mandate": "tsx src/mandate/cli.ts",
-    "mandate:eval": "tsx src/mandate/cli.ts eval"
+    "test": "node scripts/run-tests.mjs",
+    "test:engine": "node --import tsx --test --test-reporter spec"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
+    "better-sqlite3": "^13.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.33.0",
     "next": "16.3.2",
+    "razorpay": "^2.9.8",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "shadcn": "^4.19.0",
@@ -44,6 +48,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

@@ -38,6 +38,7 @@ const KNOWN_TOOLS = new Set<ToolName>([
   "get_receipt",
   "settlement_for_payment",
   "bank_candidates",
+  "bank_lines_in_window",
   "refunds_for_payment",
 ]);
 

@@ -27,12 +27,12 @@ const SYSTEM = [
   "- action is 'prove' if the claim holds, 'except' if it is violated.",
   "- When 'except', pick the single most specific code.",
   "Claim meanings:",
-  "- AUTHORIZED: intent signature valid AND cart within the intent budget, category, and time window. Else MANDATE_OVERSPEND (budget/category) or MANDATE_EXPIRED (time).",
-  "- CART_BOUND: merchant signature valid, cart hash matches, and payment amount equals the cart total. Else CART_PAYMENT_MISMATCH.",
+  "- AUTHORIZED: intent attestation must exist and be valid, then the cart must be within budget, category, and time. Use MANDATE_ATTESTATION_MISSING or MANDATE_ATTESTATION_INVALID for attestation failures, MANDATE_OVERSPEND for budget/category, and MANDATE_EXPIRED for time.",
+  "- CART_BOUND: cart attestation must exist and be valid, cart hash must match, line items must sum to the cart total, and payment amount must equal that total. Use CART_ATTESTATION_MISSING, CART_ATTESTATION_INVALID, or CART_PAYMENT_MISMATCH.",
   "- RECEIPTED: a stored receipt exists. Else RECEIPT_ABSENT.",
   "- IDEMPOTENT: exactly one payment for the idempotency key. Else RETRY_DOUBLE_BOOK.",
-  "- SETTLED: settlement net equals payment amount. Else SETTLEMENT_DRIFT.",
-  "- BANKED: exactly one bank credit tagged to this intent. Else CHANNEL_UNTAGGED.",
+  "- SETTLED: a settlement exists, gross equals the payment, and gross minus fees and tax equals net. Else SETTLEMENT_ABSENT or SETTLEMENT_DRIFT.",
+  "- BANKED: bank evidence exists and exactly one credit is tagged to this intent. Else BANK_CREDIT_ABSENT or CHANNEL_UNTAGGED.",
   "- REFUND_POLICY: refunds (if any) carry a mandate_ref and there is no chargeback-plus-other collision. Else ORPHAN_REFUND or DOUBLE_REFUND.",
 ].join("\n");
 

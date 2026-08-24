@@ -3,7 +3,7 @@ export type Paise = number;
 
 export type Rail = "acp" | "ap2_card" | "x402";
 
-export type RefundInitiator = "agent_cs" | "human" | "chargeback";
+export type RefundInitiator = "agent_cs" | "human" | "chargeback" | "unknown";
 
 export const CLAIM_TYPES = [
   "AUTHORIZED",
@@ -18,12 +18,18 @@ export const CLAIM_TYPES = [
 export type ClaimType = (typeof CLAIM_TYPES)[number];
 
 export const EXCEPTION_CODES = [
+  "MANDATE_ATTESTATION_MISSING",
+  "MANDATE_ATTESTATION_INVALID",
   "MANDATE_OVERSPEND",
   "MANDATE_EXPIRED",
+  "CART_ATTESTATION_MISSING",
+  "CART_ATTESTATION_INVALID",
   "CART_PAYMENT_MISMATCH",
   "RECEIPT_ABSENT",
   "RETRY_DOUBLE_BOOK",
+  "SETTLEMENT_ABSENT",
   "SETTLEMENT_DRIFT",
+  "BANK_CREDIT_ABSENT",
   "CHANNEL_UNTAGGED",
   "ORPHAN_REFUND",
   "DOUBLE_REFUND",
@@ -33,12 +39,18 @@ export type ExceptionCode = (typeof EXCEPTION_CODES)[number];
 
 /** Which claim a given fault is expected to break. */
 export const FAULT_TARGET: Record<ExceptionCode, ClaimType> = {
+  MANDATE_ATTESTATION_MISSING: "AUTHORIZED",
+  MANDATE_ATTESTATION_INVALID: "AUTHORIZED",
   MANDATE_OVERSPEND: "AUTHORIZED",
   MANDATE_EXPIRED: "AUTHORIZED",
+  CART_ATTESTATION_MISSING: "CART_BOUND",
+  CART_ATTESTATION_INVALID: "CART_BOUND",
   CART_PAYMENT_MISMATCH: "CART_BOUND",
   RECEIPT_ABSENT: "RECEIPTED",
   RETRY_DOUBLE_BOOK: "IDEMPOTENT",
+  SETTLEMENT_ABSENT: "SETTLED",
   SETTLEMENT_DRIFT: "SETTLED",
+  BANK_CREDIT_ABSENT: "BANKED",
   CHANNEL_UNTAGGED: "BANKED",
   ORPHAN_REFUND: "REFUND_POLICY",
   DOUBLE_REFUND: "REFUND_POLICY",
@@ -89,7 +101,7 @@ export type CartMandate = {
 
 export type Payment = {
   payment_id: string;
-  cart_id: string;
+  cart_id: string | null;
   rail: Rail;
   amount_paise: Paise;
   idempotency_key: string;
@@ -112,6 +124,9 @@ export type Order = {
 export type Settlement = {
   settlement_id: string;
   payment_id: string;
+  gross_paise: Paise;
+  fee_paise: Paise;
+  tax_paise: Paise;
   net_paise: Paise;
   psp_ref: string;
   settled_on: string;
@@ -135,17 +150,17 @@ export type Refund = {
 
 export type Sale = {
   sale_id: string;
-  intent_id: string;
-  cart_id: string;
+  intent_id: string | null;
+  cart_id: string | null;
   payment_id: string;
-  order_id: string;
-  settlement_id: string;
+  order_id: string | null;
+  settlement_id: string | null;
   fault: ExceptionCode | null;
 };
 
 export type World = {
-  seed: number;
-  week_start: string;
+  seed: number | null;
+  week_start: string | null;
   keys: {
     principals: Record<string, string>;
     merchants: Record<string, string>;

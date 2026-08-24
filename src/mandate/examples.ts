@@ -1,10 +1,12 @@
 import type { ExternalRecord } from "./adapters";
+import { generateKeyPairSync, sign } from "node:crypto";
+import { canonicalize, sha256 } from "./canonical";
 
 /**
  * Hand-written external payloads in AP2 / ACP / x402 shape. One clean sale and
  * three with real faults, to show the ledger closing non-fixture data.
  */
-export const EXAMPLE_RECORDS: ExternalRecord[] = [
+const RAW_EXAMPLE_RECORDS: ExternalRecord[] = [
   {
     ap2_intent: {
       id: "int_ap2_clean",
@@ -160,8 +162,51 @@ export const EXAMPLE_RECORDS: ExternalRecord[] = [
   },
 ];
 
+const examplePrincipal = generateKeyPairSync("ed25519");
+const exampleMerchant = generateKeyPairSync("ed25519");
+const principalPublic = examplePrincipal.publicKey.export({ type: "spki", format: "pem" }).toString();
+const merchantPublic = exampleMerchant.publicKey.export({ type: "spki", format: "pem" }).toString();
+
+/** Test-only records carry real Ed25519 attestations over canonical payloads. */
+export const EXAMPLE_RECORDS: ExternalRecord[] = RAW_EXAMPLE_RECORDS.map((record) => {
+  const intent = record.ap2_intent;
+  const cart = record.ap2_cart;
+  if (!intent || !cart) throw new Error("Test example must contain AP2 intent and cart evidence.");
+  const intentPayload = {
+    intent_id: intent.id,
+    principal_id: intent.principal_did,
+    agent_id: intent.agent_did,
+    category: intent.constraints.category,
+    budget_paise: intent.constraints.budget_minor,
+    not_before: intent.constraints.valid_from,
+    not_after: intent.constraints.valid_to,
+  };
+  const lines = cart.items.map((item) => ({ sku: item.sku, qty: item.qty, unit_paise: item.unit_minor }));
+  const cartHash = sha256({
+    intent_id: cart.intent_id,
+    merchant_id: cart.merchant,
+    category: intent.constraints.category,
+    lines,
+    total_paise: cart.amount_minor,
+  });
+  return {
+    ...record,
+    ap2_intent: {
+      ...intent,
+      public_key_pem: principalPublic,
+      signature: sign(null, Buffer.from(canonicalize(intentPayload)), examplePrincipal.privateKey).toString("base64url"),
+    },
+    ap2_cart: {
+      ...cart,
+      cart_hash: cartHash,
+      merchant_public_key_pem: merchantPublic,
+      merchant_signature: sign(null, Buffer.from(canonicalize({ cart_id: cart.id, cart_hash: cartHash })), exampleMerchant.privateKey).toString("base64url"),
+    },
+  };
+});
+
 export const EXAMPLE_EXPECTATIONS: Record<string, { type: string; code: string }> = {
-  sale_ext_1: { type: "AUTHORIZED", code: "MANDATE_OVERSPEND" },
-  sale_ext_2: { type: "RECEIPTED", code: "RECEIPT_ABSENT" },
-  sale_ext_3: { type: "BANKED", code: "CHANNEL_UNTAGGED" },
+  sale_pay_ap2_over: { type: "AUTHORIZED", code: "MANDATE_OVERSPEND" },
+  sale_pay_x402_noreceipt: { type: "RECEIPTED", code: "RECEIPT_ABSENT" },
+  sale_pay_acp_untagged: { type: "BANKED", code: "CHANNEL_UNTAGGED" },
 };

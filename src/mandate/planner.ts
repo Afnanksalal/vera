@@ -21,6 +21,9 @@ function basePlan(world: World, sale: Sale, type: ClaimType): Plan[] {
   const settlement = world.settlements.find((s) => s.payment_id === sale.payment_id);
   switch (type) {
     case "AUTHORIZED":
+      if (!sale.intent_id || !sale.cart_id) {
+        return [{ tool: "get_payment", args: { payment_id: sale.payment_id } }];
+      }
       return [
         { tool: "get_intent", args: { intent_id: sale.intent_id } },
         { tool: "verify_intent_sig", args: { intent_id: sale.intent_id } },
@@ -30,6 +33,9 @@ function basePlan(world: World, sale: Sale, type: ClaimType): Plan[] {
         },
       ];
     case "CART_BOUND":
+      if (!sale.cart_id) {
+        return [{ tool: "get_payment", args: { payment_id: sale.payment_id } }];
+      }
       return [
         { tool: "get_cart", args: { cart_id: sale.cart_id } },
         { tool: "verify_cart_sig", args: { cart_id: sale.cart_id } },
@@ -54,14 +60,17 @@ function basePlan(world: World, sale: Sale, type: ClaimType): Plan[] {
       return [
         { tool: "get_payment", args: { payment_id: sale.payment_id } },
         { tool: "settlement_for_payment", args: { payment_id: sale.payment_id } },
-        {
+        ...(payment && settlement ? [{
           tool: "bank_candidates",
           args: {
-            amount_paise: payment?.amount_paise ?? -1,
-            date: settlement?.settled_on ?? world.week_start,
+            amount_paise: payment.amount_paise,
+            date: settlement.settled_on,
             window_days: BANK_WINDOW_DAYS,
           },
-        },
+        } as Plan, {
+          tool: "bank_lines_in_window",
+          args: { date: settlement.settled_on, window_days: BANK_WINDOW_DAYS },
+        } as Plan] : []),
       ];
     case "REFUND_POLICY":
       return [

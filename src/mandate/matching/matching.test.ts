@@ -85,13 +85,15 @@ class ScriptedMatcher implements ChatModel {
   }
 }
 
-test("the deterministic solver cannot match a group larger than its subset cap", () => {
-  const { problem, key } = buildMatchFixture();
-  const r = reconcileDeterministic(problem);
-  const matchedIds = new Set(r.matches.map((m) => m.credit_id));
-  for (const id of key.beyond_solver_credit_ids) {
-    assert.ok(!matchedIds.has(id), `bounded solver must not find big group ${id}`);
-  }
+test("the deterministic solver supports groups larger than four units", () => {
+  const credit = { id: "c-five", amount_paise: 150, date: D, label: "five" };
+  const problem: MatchProblem = {
+    credits: [credit],
+    units: [10, 20, 30, 40, 50].map((amount, index) => ({ id: `u${index}`, amount_paise: amount, date: D, label: `u${index}` })),
+    tolerance_paise: 0,
+    window_days: 2,
+  };
+  assert.deepEqual(searchGroupings(problem, credit), [["u4", "u3", "u2", "u1", "u0"]]);
 });
 
 test("model-guided reconcile recovers matches the deterministic pass could not", async () => {
@@ -103,7 +105,7 @@ test("model-guided reconcile recovers matches the deterministic pass could not",
   assert.equal(guided.verify.ok, true, "only verified matches are committed");
   assert.ok(
     guided.coverage.matched > deterministic.coverage.matched,
-    "the model must strictly beat the bounded solver"
+    "the model must disambiguate at least one additional verified match"
   );
   const guidedIds = new Set(guided.matches.map((m) => m.credit_id));
   for (const id of key.beyond_solver_credit_ids) {

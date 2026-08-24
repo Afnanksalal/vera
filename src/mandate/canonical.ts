@@ -1,4 +1,4 @@
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, createPublicKey, timingSafeEqual, verify as verifySignature } from "node:crypto";
 
 type Json =
   | null
@@ -46,6 +46,13 @@ export function hmacSign(key: string, payload: unknown): string {
 }
 
 export function hmacVerify(key: string, payload: unknown, signature: string): boolean {
+  if (key.includes("BEGIN PUBLIC KEY")) {
+    try {
+      return verifySignature(null, Buffer.from(canonicalize(payload)), createPublicKey(key), Buffer.from(signature, "base64url"));
+    } catch {
+      return false;
+    }
+  }
   const expected = hmacSign(key, payload);
   const a = Buffer.from(expected, "hex");
   const b = Buffer.from(signature, "hex");

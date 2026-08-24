@@ -38,16 +38,14 @@ test("closing ingested external records surfaces the real faults", () => {
 test("the clean external sale proves every claim", () => {
   const world = ingest(EXAMPLE_RECORDS);
   const run = runClose(world);
-  const clean = run.claims.filter((c) => c.sale_id === "sale_ext_0");
+  const clean = run.claims.filter((c) => c.sale_id === "sale_pay_ap2_clean");
   assert.equal(clean.length, 7);
   assert.ok(clean.every((c) => c.status === "PROVEN"), "clean sale fully proven");
 });
 
-test("missing x402 receipt maps to stored=false", () => {
+test("missing x402 receipt remains absent", () => {
   const world = ingest(EXAMPLE_RECORDS);
-  const noReceipt = world.sales.find((s) => s.sale_id === "sale_ext_2")!;
-  const receipt = callToolRaw(world, "get_receipt", { payment_id: noReceipt.payment_id }) as {
-    stored: boolean;
-  };
-  assert.equal(receipt.stored, false);
+  const noReceipt = world.sales.find((s) => s.sale_id === "sale_pay_x402_noreceipt")!;
+  const receipt = callToolRaw(world, "get_receipt", { payment_id: noReceipt.payment_id });
+  assert.equal(receipt, null);
 });
