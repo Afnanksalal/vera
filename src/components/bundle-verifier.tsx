@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 export function BundleVerifier() {
   const file = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string | null>(null);
-  return <div className="flex flex-wrap items-center gap-3"><input ref={file} type="file" accept="application/json,.json" className="max-w-xs text-sm"/><Button variant="outline" onClick={async () => {
+  return <div className="flex min-w-0 flex-wrap items-center gap-3"><input ref={file} type="file" accept="application/json,.json" className="w-full max-w-xs text-sm"/><Button variant="outline" onClick={async () => {
     const selected = file.current?.files?.[0];
     if (!selected) return setStatus("Choose an audit bundle.");
     try {

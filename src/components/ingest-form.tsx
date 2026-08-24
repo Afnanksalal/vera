@@ -36,7 +36,7 @@ export function IngestForm() {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <input ref={fileRef} type="file" accept="application/json,.json" className="max-w-xs text-sm" />
+      <input ref={fileRef} type="file" accept="application/json,.json" className="w-full max-w-xs text-sm" />
       <Button type="button" variant="outline" disabled={pending} onClick={submit}>
         {pending ? "Importing…" : "Import JSON file"}
       </Button>

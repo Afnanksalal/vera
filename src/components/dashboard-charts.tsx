@@ -24,7 +24,7 @@ function TrendChart({ points }: { points: ReportTrendPoint[] }) {
       <span className="inline-flex items-center gap-2"><span className="size-2 rounded-full bg-ok"/>Passed</span>
       <span className="inline-flex items-center gap-2"><span className="size-2 rounded-full bg-bad"/>Needs attention</span>
       <span className="inline-flex items-center gap-2"><span className="size-2 rounded-full bg-amber-500"/>Inconclusive</span>
-      <span className="ml-auto">Last {points.length} {points.length === 1 ? "report" : "reports"}</span>
+      <span className="w-full sm:ml-auto sm:w-auto">Last {points.length} {points.length === 1 ? "report" : "reports"}</span>
     </div>
     <div className="relative overflow-hidden rounded-xl bg-muted/35 px-2 pt-2">
       <svg viewBox="0 0 300 112" role="img" aria-label="Passed, attention, and inconclusive rates across stored reports" className="h-44 w-full overflow-visible">
@@ -55,14 +55,14 @@ function ResultMix({ close }: { close: CloseSummary }) {
   const passed = total ? close.proven / total * 100 : 0;
   const attention = total ? close.excepted / total * 100 : 0;
   const background = `conic-gradient(var(--ok) 0 ${passed}%, var(--bad) ${passed}% ${passed + attention}%, oklch(0.72 0.14 75) ${passed + attention}% 100%)`;
-  return <div className="flex flex-col items-center gap-6 sm:flex-row lg:flex-col xl:flex-row">
+  return <div className="flex min-w-0 flex-col items-center gap-6 sm:flex-row lg:flex-col">
     <div className="relative size-36 shrink-0 rounded-full p-[13px]" style={{ background }} role="img" aria-label={`${close.proven} passed, ${close.excepted} need attention, ${close.abstained} inconclusive`}>
       <div className="flex size-full flex-col items-center justify-center rounded-full bg-card shadow-[inset_0_0_0_1px_var(--border)]"><span className="text-3xl font-semibold tabular-nums">{total}</span><span className="text-xs text-muted-foreground">total checks</span></div>
     </div>
-    <dl className="grid w-full gap-3 text-sm">
-      <div className="flex items-center justify-between gap-5"><dt className="flex items-center gap-2 text-muted-foreground"><span className="size-2 rounded-full bg-ok"/>Passed</dt><dd className="font-semibold tabular-nums">{close.proven}</dd></div>
-      <div className="flex items-center justify-between gap-5"><dt className="flex items-center gap-2 text-muted-foreground"><span className="size-2 rounded-full bg-bad"/>Needs attention</dt><dd className="font-semibold tabular-nums">{close.excepted}</dd></div>
-      <div className="flex items-center justify-between gap-5"><dt className="flex items-center gap-2 text-muted-foreground"><span className="size-2 rounded-full bg-amber-500"/>Inconclusive</dt><dd className="font-semibold tabular-nums">{close.abstained}</dd></div>
+    <dl className="grid min-w-0 flex-1 gap-3 self-stretch text-sm">
+      <div className="flex min-w-0 items-center justify-between gap-3"><dt className="flex min-w-0 items-center gap-2 text-muted-foreground"><span className="size-2 shrink-0 rounded-full bg-ok"/><span>Passed</span></dt><dd className="shrink-0 font-semibold tabular-nums">{close.proven}</dd></div>
+      <div className="flex min-w-0 items-center justify-between gap-3"><dt className="flex min-w-0 items-center gap-2 text-muted-foreground"><span className="size-2 shrink-0 rounded-full bg-bad"/><span>Needs attention</span></dt><dd className="shrink-0 font-semibold tabular-nums">{close.excepted}</dd></div>
+      <div className="flex min-w-0 items-center justify-between gap-3"><dt className="flex min-w-0 items-center gap-2 text-muted-foreground"><span className="size-2 shrink-0 rounded-full bg-amber-500"/><span>Inconclusive</span></dt><dd className="shrink-0 font-semibold tabular-nums">{close.abstained}</dd></div>
     </dl>
   </div>;
 }
@@ -72,7 +72,7 @@ export function DashboardCharts({ analytics, close }: { analytics: DashboardAnal
   return <section aria-labelledby="operational-pulse-title" className="grid gap-4">
     <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
       <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand">Live from your reports</p><h2 id="operational-pulse-title" className="mt-1 font-display text-2xl font-semibold tracking-tight">Operational pulse</h2></div>
-      {analytics.payments_with_issues > 0 ? <div className="flex items-center gap-2 rounded-full bg-bad/[0.07] px-3 py-1.5 text-xs font-medium text-bad"><ArrowUpRight aria-hidden className="size-3.5"/>{inr(analytics.payment_value_with_issues)} across {analytics.payments_with_issues} flagged {analytics.payments_with_issues === 1 ? "payment" : "payments"}</div> : <div className="flex items-center gap-2 rounded-full bg-ok/[0.08] px-3 py-1.5 text-xs font-medium text-ok"><CircleCheckBig aria-hidden className="size-3.5"/>No payment value is currently flagged</div>}
+      {analytics.payments_with_issues > 0 ? <div className="flex max-w-full items-start gap-2 self-start rounded-2xl bg-bad/[0.07] px-3 py-1.5 text-xs font-medium leading-relaxed text-bad sm:self-auto"><ArrowUpRight aria-hidden className="mt-0.5 size-3.5 shrink-0"/><span>{inr(analytics.payment_value_with_issues)} across {analytics.payments_with_issues} flagged {analytics.payments_with_issues === 1 ? "payment" : "payments"}</span></div> : <div className="flex max-w-full items-start gap-2 self-start rounded-2xl bg-ok/[0.08] px-3 py-1.5 text-xs font-medium leading-relaxed text-ok sm:self-auto"><CircleCheckBig aria-hidden className="mt-0.5 size-3.5 shrink-0"/><span>No payment value is currently flagged</span></div>}
     </div>
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.8fr)]">
       <article className="rounded-2xl border border-border bg-card p-5 shadow-[0_16px_50px_-38px_rgba(15,23,42,0.35)] sm:p-6">
@@ -93,7 +93,7 @@ export function DashboardCharts({ analytics, close }: { analytics: DashboardAnal
           <p className="relative mt-2 text-sm leading-relaxed text-muted-foreground">Checks with the most missing, conflicting, or inconclusive evidence in the latest report.</p>
         </div>
         <div className="p-5 sm:p-6">
-          {analytics.issues.length ? <div className="grid gap-4">{analytics.issues.map((point) => <div key={point.type} className="grid grid-cols-[minmax(8rem,0.75fr)_minmax(7rem,1.25fr)_2rem] items-center gap-3"><span className="truncate text-sm font-medium">{friendlyClaim(point.type)}</span><div className="h-2.5 overflow-hidden rounded-full bg-muted"><div className="h-full min-w-2 rounded-full bg-gradient-to-r from-bad/70 to-bad" style={{ width: `${Math.max(8, point.count / maxIssueCount * 100)}%` }}/></div><span className="text-right text-sm font-semibold tabular-nums text-bad">{point.count}</span></div>)}</div> : <div className="flex min-h-28 items-center justify-center gap-3 text-sm text-muted-foreground"><CircleCheckBig aria-hidden className="size-5 text-ok"/>Every check passed in the latest report.</div>}
+          {analytics.issues.length ? <div className="grid gap-4">{analytics.issues.map((point) => <div key={point.type} className="grid min-w-0 grid-cols-[minmax(0,1fr)_2rem] items-center gap-x-3 gap-y-2 sm:grid-cols-[minmax(8rem,0.75fr)_minmax(7rem,1.25fr)_2rem]"><span className="min-w-0 truncate text-sm font-medium">{friendlyClaim(point.type)}</span><div className="col-span-2 row-start-2 h-2.5 overflow-hidden rounded-full bg-muted sm:col-span-1 sm:col-start-2 sm:row-start-1"><div className="h-full min-w-2 rounded-full bg-gradient-to-r from-bad/70 to-bad" style={{ width: `${Math.max(8, point.count / maxIssueCount * 100)}%` }}/></div><span className="col-start-2 row-start-1 text-right text-sm font-semibold tabular-nums text-bad sm:col-start-3">{point.count}</span></div>)}</div> : <div className="flex min-h-28 items-center justify-center gap-3 text-sm text-muted-foreground"><CircleCheckBig aria-hidden className="size-5 shrink-0 text-ok"/>Every check passed in the latest report.</div>}
         </div>
       </div>
     </article>
