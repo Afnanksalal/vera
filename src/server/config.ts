@@ -36,6 +36,9 @@ export function authSecret(): string {
 }
 
 export function databasePath(): string {
+  // HTTP contract tests run a production server against an isolated on-disk
+  // database so separate Next.js route workers observe the same state.
+  if (process.env.VERA_TEST_DATABASE) return process.env.VERA_TEST_DATABASE;
   if (isTest()) return ":memory:";
   return join(process.cwd(), "data", "vera.db");
 }

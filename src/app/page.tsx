@@ -2,6 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { installationHasUser } from "@/server/auth";
+import { currentUser } from "@/server/http";
+
+export const dynamic = "force-dynamic";
 
 const CHECKS = [
   { name: "Authorized", desc: "The signed mandate allowed this agent to spend this amount, in this category, at this time." },
@@ -19,7 +23,15 @@ const STEPS = [
   { name: "Commit", body: "Only the verifier can update claim status. Every close is hash-chained and signed by this installation." },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const user = await currentUser();
+  const initialized = installationHasUser();
+  const primaryCta = user
+    ? { href: "/app", label: "Open app" }
+    : initialized
+      ? { href: "/login", label: "Sign in" }
+      : { href: "/signup", label: "Set up Vera" };
+
   return (
     <div>
       <section className="relative overflow-hidden border-b border-border/80">
@@ -35,8 +47,8 @@ export default function HomePage() {
               flags anything that does not add up.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/signup" className={cn(buttonVariants({ size: "lg" }), "h-11 px-5 text-[15px]")}>
-                Set up Vera
+              <Link href={primaryCta.href} className={cn(buttonVariants({ size: "lg" }), "h-11 px-5 text-[15px]")}>
+                {primaryCta.label}
               </Link>
               <Link href="/#how" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-11 px-5 text-[15px]")}>
                 How she works
@@ -174,12 +186,13 @@ export default function HomePage() {
                 Let Vera <span className="accent text-brand">close</span> your agents&rsquo; books.
               </h2>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-background/70">
-                Create the installation owner, configure integrations in Settings,
-                and operate the complete ledger from the browser.
+                {initialized
+                  ? "Sign in to configure integrations and operate the complete ledger from the browser."
+                  : "Create the installation owner, configure integrations in Settings, and operate the complete ledger from the browser."}
               </p>
               <div className="mt-7">
-                <Link href="/signup" className="inline-flex h-11 items-center rounded-lg bg-brand px-5 text-[15px] font-semibold text-brand-foreground transition-opacity hover:opacity-90">
-                  Set up Vera
+                <Link href={primaryCta.href} className="inline-flex h-11 items-center rounded-lg bg-brand px-5 text-[15px] font-semibold text-brand-foreground transition-opacity hover:opacity-90">
+                  {primaryCta.label}
                 </Link>
               </div>
             </div>

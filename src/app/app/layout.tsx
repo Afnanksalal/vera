@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/server/http";
+import { safeRedirectPath } from "@/server/navigation";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/components/account-actions";
 
@@ -17,7 +19,10 @@ const NAV = [
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser().catch(() => null);
-  if (!user) redirect("/login");
+  if (!user) {
+    const destination = safeRedirectPath((await headers()).get("x-vera-request-path") ?? "/app");
+    redirect(`/login?next=${encodeURIComponent(destination)}`);
+  }
 
   return (
     <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-6">

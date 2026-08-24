@@ -3,6 +3,7 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { currentUser } from "@/server/http";
+import { installationHasUser } from "@/server/auth";
 
 const links = [
   { href: "/#story", label: "What Vera does" },
@@ -47,17 +48,16 @@ async function AuthButtons() {
       </div>
     );
   }
-  return (
-    <div className="flex items-center gap-2">
-      <Link
-        href="/login"
-        className="hidden rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline"
-      >
+  if (installationHasUser()) {
+    return (
+      <Link href="/login" className={cn(buttonVariants({ size: "sm" }), "h-9 px-3.5")}>
         Sign in
       </Link>
-      <Link href="/signup" className={cn(buttonVariants({ size: "sm" }), "h-9 px-3.5")}>
-        Create account
-      </Link>
-    </div>
+    );
+  }
+  return (
+    <Link href="/signup" className={cn(buttonVariants({ size: "sm" }), "h-9 px-3.5")}>
+      Set up Vera
+    </Link>
   );
 }

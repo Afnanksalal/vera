@@ -1,11 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 export function LogoutButton() {
-  const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,20 +17,22 @@ export function LogoutButton() {
         onClick={async () => {
           setPending(true);
           setError(null);
-          const response = await fetch("/api/auth/logout", { method: "POST" });
-          if (!response.ok) {
-            const body = (await response.json()) as { error?: string };
-            setError(body.error || "Sign out failed");
+          try {
+            const response = await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin", cache: "no-store" });
+            if (!response.ok) {
+              const body = (await response.json().catch(() => ({}))) as { error?: string };
+              throw new Error(body.error || "Sign out failed");
+            }
+            window.location.replace("/login?notice=signed_out");
+          } catch (error) {
+            setError(error instanceof Error ? error.message : "Sign out failed");
             setPending(false);
-            return;
           }
-          router.replace("/login");
-          router.refresh();
         }}
       >
         {pending ? "Signing out…" : "Sign out"}
       </Button>
-      {error ? <span className="text-xs text-destructive">{error}</span> : null}
+      {error ? <span role="alert" aria-live="polite" className="text-xs text-destructive">{error}</span> : null}
     </div>
   );
 }

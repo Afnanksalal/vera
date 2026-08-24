@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { authenticate, createSession, sessionCookie } from "@/server/auth";
+import { authenticate, createSession, installationHasUser, sessionCookie } from "@/server/auth";
 import { HttpError, assertSameOriginIfCookie, handle, readJson, requestIsSecure } from "@/server/http";
 import { clientIp, normalizeEmail, rateLimit } from "@/server/policy";
 
@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   return handle(async () => {
     await assertSameOriginIfCookie();
+    if (!installationHasUser()) throw new HttpError(409, "Create the installation owner before signing in.", "installation_uninitialized");
     const body = (await readJson(req, 8_192)) as { email?: string; password?: string };
     const email = normalizeEmail(String(body.email ?? ""));
     if (!rateLimit(`login:${clientIp(req.headers)}:${email}`)) {

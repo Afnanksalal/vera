@@ -90,20 +90,29 @@ export async function readJson(req: Request, maxBytes = 1_000_000): Promise<unkn
   const declared = Number(req.headers.get("content-length") ?? "0");
   if (declared > maxBytes) throw new HttpError(413, "Payload too large.", "payload");
   const text = await req.text();
-  if (text.length > maxBytes) throw new HttpError(413, "Payload too large.", "payload");
+  if (new TextEncoder().encode(text).byteLength > maxBytes) throw new HttpError(413, "Payload too large.", "payload");
   if (!text) return {};
+  const contentType = req.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase();
+  if (contentType !== "application/json") {
+    throw new HttpError(415, "Content-Type must be application/json.", "unsupported_media_type");
+  }
+  let parsed: unknown;
   try {
-    return JSON.parse(text);
+    parsed = JSON.parse(text);
   } catch {
     throw new HttpError(400, "Invalid JSON.", "invalid_json");
   }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new HttpError(400, "JSON body must be an object.", "invalid_json");
+  }
+  return parsed;
 }
 
 export function codedError(err: unknown): never {
   if (err instanceof HttpError) throw err;
   const code = err && typeof err === "object" && "code" in err ? String((err as { code: string }).code) : "";
   const message = err instanceof Error ? err.message : "request_failed";
-  const status = code === "registration_closed" ? 403 : 400;
+  const status = code === "registration_closed" || code === "api_key_limit" ? 409 : code === "invalid_credentials" ? 401 : 400;
   if (code) throw new HttpError(status, message, code);
   throw err;
 }
