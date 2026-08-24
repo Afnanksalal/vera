@@ -5,10 +5,13 @@
   "description": "Vera reconciles agent-originated purchases across AP2, ACP, and x402, proving or flagging every step with a verifier that keeps the model honest.",
   "license": "MIT",
   "author": "afnanksalal",
-  "homepage": "https://github.com/afnanksalal/vera-mandate-ledger#readme",
+  "homepage": "https://vera.18.61.174.6.sslip.io",
   "repository": {
     "type": "git",
-    "url": "https://github.com/afnanksalal/vera-mandate-ledger.git"
+    "url": "https://github.com/Afnanksalal/vera.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Afnanksalal/vera/issues"
   },
   "keywords": [
     "agentic-commerce",
@@ -16,7 +19,8 @@
     "ap2",
     "acp",
     "x402",
-    "conformal-prediction",
+    "razorpay",
+    "ai-agent-payments",
     "audit",
     "nextjs",
     "typescript"

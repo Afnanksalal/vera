@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { REPOSITORY_URL } from "@/lib/site";
 
 export function SiteFooter() {
   return (
@@ -27,6 +28,9 @@ export function SiteFooter() {
               How it works
             </Link>
             <Link href="/app/settings" className="text-muted-foreground hover:text-foreground">Settings</Link>
+            <a href={REPOSITORY_URL} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground">
+              Source on GitHub
+            </a>
           </div>
           <div className="flex flex-col gap-2">
             <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
@@ -42,9 +46,10 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="border-t border-border/80">
-        <p className="mx-auto w-full max-w-6xl px-5 py-5 text-xs text-muted-foreground sm:px-6">
-          AP2, ACP, and x402 payments normalized into one signed, replayable ledger.
-        </p>
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-5 py-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <p>AP2, ACP, and x402 payments normalized into one signed, replayable ledger.</p>
+          <a href={REPOSITORY_URL} target="_blank" rel="noreferrer" className="w-fit hover:text-foreground hover:underline">Open-source on GitHub</a>
+        </div>
       </div>
     </footer>
   );

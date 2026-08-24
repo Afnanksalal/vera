@@ -1,10 +1,15 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { currentUser } from "@/server/http";
 import { safeRedirectPath } from "@/server/navigation";
 import { ConsoleNav } from "@/components/console-nav";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  title: { default: "Console", template: "%s · Vera Console" },
+  robots: { index: false, follow: false, noarchive: true, nosnippet: true },
+};
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await currentUser();

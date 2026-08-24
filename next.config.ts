@@ -20,7 +20,8 @@ const nextConfig: NextConfig = {
     ];
     return [
       { source: "/(.*)", headers: securityHeaders },
-      { source: "/api/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
+      { source: "/api/:path*", headers: [{ key: "Cache-Control", value: "no-store" }, { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }] },
+      { source: "/app/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive, nosnippet" }] },
     ];
   },
 };

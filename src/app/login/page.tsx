@@ -5,7 +5,11 @@ import { AuthForm } from "@/components/auth-form";
 import { currentUser } from "@/server/http";
 import { safeRedirectPath } from "@/server/navigation";
 
-export const metadata: Metadata = { title: "Sign in · Vera" };
+export const metadata: Metadata = {
+  title: "Sign in",
+  alternates: { canonical: "/login" },
+  robots: { index: false, follow: false, noarchive: true },
+};
 export const dynamic = "force-dynamic";
 
 export default async function LoginPage({

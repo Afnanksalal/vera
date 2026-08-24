@@ -1,5 +1,7 @@
 <p align="center">
-  <img src="public/art/vera-icon.png" width="88" alt="Vera, an owl with checkmarks for eyes" />
+  <a href="https://vera.18.61.174.6.sslip.io" aria-label="Open the Vera website">
+    <img src="https://vera.18.61.174.6.sslip.io/opengraph-image" width="960" alt="Vera, the audit and reconciliation layer for AI agent purchases" />
+  </a>
 </p>
 
 <h1 align="center">Vera</h1>
@@ -19,6 +21,7 @@
   <img src="https://img.shields.io/badge/next.js-16-2d8a6e" alt="Next.js" />
   <img src="https://img.shields.io/badge/money-integer%20paise-2d8a6e" alt="Integer paise" />
   <img src="https://img.shields.io/badge/runtime-web%20only-2d8a6e" alt="Web-only runtime" />
+  <a href="https://vera.18.61.174.6.sslip.io"><img src="https://img.shields.io/badge/live-demo-009f6b" alt="Live demo" /></a>
 </p>
 
 <p align="center">

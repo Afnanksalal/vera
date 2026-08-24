@@ -1,11 +1,20 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { LICENSE_URL, REPOSITORY_URL, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE } from "@/lib/site";
 import { installationHasUser } from "@/server/auth";
 import { currentUser } from "@/server/http";
+import { metadataBaseUrl } from "@/server/site-metadata";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  description: SITE_DESCRIPTION,
+  alternates: { canonical: "/" },
+  openGraph: { url: "/", title: SITE_TITLE, description: SITE_DESCRIPTION },
+  twitter: { title: SITE_TITLE, description: SITE_DESCRIPTION },
+};
 
 const CHECKS = [
   { name: "Authorized", desc: "The signed mandate allowed this agent to spend this amount, in this category, at this time." },
@@ -26,6 +35,42 @@ const STEPS = [
 export default async function HomePage() {
   const user = await currentUser();
   const initialized = installationHasUser();
+  const publicUrl = metadataBaseUrl().toString();
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": `${publicUrl}#website`,
+        url: publicUrl,
+        name: SITE_NAME,
+        description: SITE_DESCRIPTION,
+        inLanguage: "en-IN",
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": `${publicUrl}#software`,
+        name: SITE_NAME,
+        url: publicUrl,
+        description: SITE_DESCRIPTION,
+        applicationCategory: "FinanceApplication",
+        applicationSubCategory: "Payment audit and reconciliation",
+        operatingSystem: "Web",
+        isAccessibleForFree: true,
+        license: LICENSE_URL,
+        codeRepository: REPOSITORY_URL,
+        image: new URL("/opengraph-image", publicUrl).toString(),
+        featureList: [
+          "Signed purchase mandates",
+          "Merchant-signed carts and receipts",
+          "Razorpay payment and settlement synchronization",
+          "Bank deposit reconciliation",
+          "Deterministically verified AI investigations",
+          "Signed and replayable audit bundles",
+        ],
+      },
+    ],
+  };
   const primaryCta = user
     ? { href: "/app", label: "Open app" }
     : initialized
@@ -34,6 +79,7 @@ export default async function HomePage() {
 
   return (
     <div data-landing-page>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} />
       <section className="relative overflow-hidden border-b border-border/80">
         <div className="pointer-events-none absolute inset-0 grid-faint" aria-hidden />
         <div className="relative mx-auto grid w-full max-w-6xl items-center gap-8 px-5 pb-14 pt-16 sm:px-6 sm:pt-20 lg:grid-cols-[1.05fr_0.95fr]">
