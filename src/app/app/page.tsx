@@ -1,13 +1,14 @@
 import { CloseButton } from "@/components/app-actions";
 import { IngestForm } from "@/components/ingest-form";
 import { latestClose, listReviews, recordsForUser } from "@/server/ledger";
-import { requireUser } from "@/server/http";
+import { currentUser } from "@/server/http";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export default async function AppHomePage() {
-  const user = await requireUser();
+  const user = await currentUser();
+  if (!user) return null;
   const events = recordsForUser(user.id).length;
   const close = latestClose(user.id);
   const open = listReviews(user.id, "open");

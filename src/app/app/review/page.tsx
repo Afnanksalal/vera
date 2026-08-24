@@ -1,11 +1,12 @@
 import { AckButton } from "@/components/ack-button";
 import { listReviews } from "@/server/ledger";
-import { requireUser } from "@/server/http";
+import { currentUser } from "@/server/http";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReviewPage() {
-  const user = await requireUser();
+  const user = await currentUser();
+  if (!user) return null;
   const open = listReviews(user.id, "open");
 
   return (

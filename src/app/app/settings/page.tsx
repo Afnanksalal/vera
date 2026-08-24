@@ -1,6 +1,6 @@
 import { AiSettingsForm, ApiKeyForm, PasswordForm, RazorpayForm, RevokeKeyButton, SyncButton, SystemSettingsForm } from "@/components/settings-forms";
 import { isOwner, listApiKeys } from "@/server/auth";
-import { requireUser } from "@/server/http";
+import { currentUser } from "@/server/http";
 import { razorpayPublic } from "@/server/razorpay";
 import { aiSettingsPublic, getSystemSettings } from "@/server/settings";
 import { webhookQueueStatus } from "@/server/webhooks";
@@ -8,7 +8,8 @@ import { webhookQueueStatus } from "@/server/webhooks";
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const user = await requireUser();
+  const user = await currentUser();
+  if (!user) return null;
   const keys = listApiKeys(user.id);
   const rzp = razorpayPublic(user.id);
   const system = getSystemSettings();

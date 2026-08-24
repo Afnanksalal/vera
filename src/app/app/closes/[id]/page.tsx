@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 import { closeById } from "@/server/ledger";
-import { requireUser } from "@/server/http";
+import { currentUser } from "@/server/http";
 
 export const dynamic = "force-dynamic";
 
 export default async function CloseDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const user = await requireUser();
+  const user = await currentUser();
+  if (!user) return null;
   const close = closeById(user.id, (await params).id);
   if (!close) notFound();
   const bundle = close.bundle as { head?: string; events?: unknown[]; summary?: { challenges?: number; tool_calls?: number } } | null;

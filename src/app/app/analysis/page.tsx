@@ -1,5 +1,5 @@
 import { AnalysisConsole } from "@/components/analysis-console";
-import { requireUser } from "@/server/http";
+import { currentUser } from "@/server/http";
 import { aiSettingsPublic } from "@/server/settings";
 import { recordsForUser } from "@/server/ledger";
 import { ingest } from "@/mandate/adapters";
@@ -10,7 +10,8 @@ import { calibrationStatus } from "@/server/calibration";
 export const dynamic = "force-dynamic";
 
 export default async function AnalysisPage() {
-  const user = await requireUser();
+  const user = await currentUser();
+  if (!user) return null;
   const ai = aiSettingsPublic(user.id);
   const records = recordsForUser(user.id);
   const sales = records.length ? ingest(records).sales.map(({ sale_id }) => ({ sale_id })) : [];

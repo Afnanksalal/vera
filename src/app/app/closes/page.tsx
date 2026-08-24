@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { BundleVerifier } from "@/components/bundle-verifier";
-import { requireUser } from "@/server/http";
+import { currentUser } from "@/server/http";
 import { listCloses } from "@/server/ledger";
 
 export const dynamic = "force-dynamic";
 
 export default async function ClosesPage() {
-  const user = await requireUser();
+  const user = await currentUser();
+  if (!user) return null;
   const closes = listCloses(user.id);
   return <div className="grid gap-8">
     <section className="grid gap-3"><div><h2 className="text-lg font-semibold">Audit bundles</h2><p className="mt-1 text-sm text-muted-foreground">Download a self-contained close or verify a bundle against this installation’s trusted signing identity.</p></div><BundleVerifier/><a className="text-sm text-brand underline underline-offset-4" href="/api/v1/public-key">Download installation public key</a></section>

@@ -1,11 +1,12 @@
 import { CheckoutForm } from "@/components/checkout-form";
-import { requireUser } from "@/server/http";
+import { currentUser } from "@/server/http";
 import { razorpayPublic } from "@/server/razorpay";
 
 export const dynamic = "force-dynamic";
 
 export default async function PayPage() {
-  const user = await requireUser();
+  const user = await currentUser();
+  if (!user) return null;
   const rzp = razorpayPublic(user.id);
   return (
     <div className="grid gap-4">
