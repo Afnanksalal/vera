@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { changePassword, createSession, destroyAllSessions, sessionCookie, sessionFromToken } from "@/server/auth";
+import { changePassword, createSession, destroyAllSessions, sessionContext, sessionCookie, sessionFromToken } from "@/server/auth";
 import { assertSameOriginIfCookie, codedError, handle, HttpError, readJson, readSessionToken, requestIsSecure } from "@/server/http";
 import { rateLimit } from "@/server/policy";
 
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
       codedError(error);
     }
     destroyAllSessions(session.user.id);
-    const token = createSession(session.user.id);
+    const token = createSession(session.user.id, sessionContext(req.headers));
     const cookie = sessionCookie(token, requestIsSecure(req));
     (await cookies()).set(cookie.name, cookie.value, cookie.options as never);
     return Response.json({ ok: true });

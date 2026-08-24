@@ -116,11 +116,46 @@ try {
   const loginCookie = sessionCookie(login);
   await expectStatus("authenticated session", "/api/auth/me", 200, { headers: { cookie: loginCookie } });
 
+  const sessionInventory = await expectStatus("session inventory", "/api/auth/sessions", 200, { headers: { cookie: loginCookie } });
+  const sessionBody = await sessionInventory.json();
+  assert.equal(sessionBody.sessions.length, 2);
+  assert.equal(sessionBody.sessions.filter((session) => session.current).length, 1);
+  assert.equal("token" in sessionBody.sessions[0], false);
+  const currentSession = sessionBody.sessions.find((session) => session.current);
+  const signupSession = sessionBody.sessions.find((session) => !session.current);
+  await expectStatus("cannot revoke current session", `/api/auth/sessions/${currentSession.id}`, 409, {
+    method: "DELETE",
+    headers: { cookie: loginCookie, origin },
+  });
+  await expectStatus("session revoke CSRF", `/api/auth/sessions/${signupSession.id}`, 403, {
+    method: "DELETE",
+    headers: { cookie: loginCookie },
+  });
+  await expectStatus("revoke one session", `/api/auth/sessions/${signupSession.id}`, 200, {
+    method: "DELETE",
+    headers: { cookie: loginCookie, origin },
+  });
+  await expectStatus("revoked session rejected", "/api/auth/me", 401, { headers: { cookie: signupCookie } });
+
+  const extraLogin = await expectStatus("create another session", "/api/auth/login", 200, {
+    method: "POST",
+    ...json({ email: "owner@example.com", password: "valid-password-12" }, { origin }),
+  });
+  const extraCookie = sessionCookie(extraLogin);
+  const revokeOthers = await expectStatus("revoke other sessions", "/api/auth/sessions", 200, {
+    method: "DELETE",
+    headers: { cookie: loginCookie, origin },
+  });
+  assert.equal((await revokeOthers.json()).revoked, 1);
+  await expectStatus("other session rejected", "/api/auth/me", 401, { headers: { cookie: extraCookie } });
+  await expectStatus("current session retained", "/api/auth/me", 200, { headers: { cookie: loginCookie } });
+
   const protectedGet = [
     "/api/v1/analysis", "/api/v1/calibration", "/api/v1/closes", "/api/v1/closes/missing",
     "/api/v1/keys", "/api/v1/ledger", "/api/v1/razorpay", "/api/v1/reviews", "/api/v1/settings",
   ];
   for (const path of protectedGet) await expectStatus(`anonymous GET ${path}`, path, 401);
+  await expectStatus("anonymous session inventory", "/api/auth/sessions", 401);
 
   const invalidBearer = { authorization: "Bearer vera_invalid_contract_key", "content-type": "application/json" };
   const protectedPost = [

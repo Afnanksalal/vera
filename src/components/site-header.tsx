@@ -4,6 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { currentUser } from "@/server/http";
 import { installationHasUser } from "@/server/auth";
+import { LogoutButton } from "@/components/account-actions";
 
 const links = [
   { href: "/#story", label: "What Vera does" },
@@ -45,6 +46,7 @@ async function AuthButtons() {
         <Link href="/app" className={cn(buttonVariants({ size: "sm" }), "h-9 px-3.5")}>
           Open app
         </Link>
+        <LogoutButton />
       </div>
     );
   }

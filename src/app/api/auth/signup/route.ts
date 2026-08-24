@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { createInstallationOwner, createSession, sessionCookie } from "@/server/auth";
+import { createInstallationOwner, createSession, sessionContext, sessionCookie } from "@/server/auth";
 import { assertSameOriginIfCookie, codedError, handle, readJson, requestIsSecure } from "@/server/http";
 import { clientIp, rateLimit } from "@/server/policy";
 
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     } catch (err) {
       codedError(err);
     }
-    const token = createSession(user.id);
+    const token = createSession(user.id, sessionContext(req.headers));
     const cookie = sessionCookie(token, requestIsSecure(req));
     (await cookies()).set(cookie.name, cookie.value, cookie.options as never);
     return Response.json({ user: { id: user.id, email: user.email } }, { status: 201 });

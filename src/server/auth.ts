@@ -1,7 +1,7 @@
 import { API_KEY_PREFIX, SESSION_COOKIE, SESSION_TTL_MS } from "./config";
 import { getDb, nowMs } from "./db";
 import { hashPassword, randomId, randomToken, tokenHash, verifyPassword } from "./crypto";
-import { emailOk, normalizeEmail, passwordOk } from "./policy";
+import { clientIp, emailOk, normalizeEmail, passwordOk } from "./policy";
 
 export type User = {
   id: string;
@@ -13,6 +13,56 @@ export type SessionInfo = {
   user: User;
   sessionId: string;
 };
+
+export type SessionContext = {
+  clientLabel: string;
+  ipHint: string;
+};
+
+export type ActiveSession = {
+  id: string;
+  client_label: string;
+  ip_hint: string;
+  created_at: number;
+  last_seen_at: number;
+  expires_at: number;
+  current: boolean;
+};
+
+function browserName(userAgent: string): string {
+  if (/Edg\//i.test(userAgent)) return "Edge";
+  if (/OPR\//i.test(userAgent)) return "Opera";
+  if (/Chrome\//i.test(userAgent)) return "Chrome";
+  if (/Firefox\//i.test(userAgent)) return "Firefox";
+  if (/Safari\//i.test(userAgent)) return "Safari";
+  if (/curl\//i.test(userAgent)) return "API client";
+  return "Unknown browser";
+}
+
+function platformName(userAgent: string): string {
+  if (/Windows/i.test(userAgent)) return "Windows";
+  if (/iPhone|iPad/i.test(userAgent)) return "iOS";
+  if (/Android/i.test(userAgent)) return "Android";
+  if (/Macintosh|Mac OS X/i.test(userAgent)) return "macOS";
+  if (/Linux/i.test(userAgent)) return "Linux";
+  return "unknown platform";
+}
+
+function maskedIp(raw: string): string {
+  const value = raw.trim().slice(0, 64);
+  const ipv4 = value.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3}$/);
+  if (ipv4) return `${ipv4[1]}.${ipv4[2]}.${ipv4[3]}.x`;
+  if (value.includes(":")) return `${value.split(":").filter(Boolean).slice(0, 4).join(":")}:…`;
+  return value === "local" ? "local" : "unknown";
+}
+
+export function sessionContext(headers: Headers): SessionContext {
+  const userAgent = (headers.get("user-agent") ?? "").slice(0, 512);
+  return {
+    clientLabel: `${browserName(userAgent)} on ${platformName(userAgent)}`,
+    ipHint: maskedIp(clientIp(headers)),
+  };
+}
 
 export function createUser(emailRaw: string, password: string): User {
   const email = normalizeEmail(emailRaw);
@@ -69,18 +119,22 @@ export function authenticate(emailRaw: string, password: string): User | null {
   return { id: row.id, email: row.email, created_at: row.created_at };
 }
 
-export function createSession(userId: string): string {
+export function createSession(userId: string, context: SessionContext = { clientLabel: "Unknown browser", ipHint: "unknown" }): string {
   const token = randomToken(32);
   const db = getDb();
-  db.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(nowMs());
+  const now = nowMs();
+  db.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(now);
   const active = db.prepare("SELECT id FROM sessions WHERE user_id = ? ORDER BY created_at DESC").all(userId) as { id: string }[];
   for (const stale of active.slice(19)) db.prepare("DELETE FROM sessions WHERE id = ? AND user_id = ?").run(stale.id, userId);
-  db.prepare("INSERT INTO sessions (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)").run(
+  db.prepare("INSERT INTO sessions (id, user_id, token_hash, expires_at, created_at, client_label, ip_hint, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(
     randomId("ses"),
     userId,
     tokenHash(token),
-    nowMs() + SESSION_TTL_MS,
-    nowMs()
+    now + SESSION_TTL_MS,
+    now,
+    context.clientLabel.slice(0, 100),
+    context.ipHint.slice(0, 64),
+    now
   );
   return token;
 }
@@ -90,14 +144,17 @@ export function sessionFromToken(token: string | undefined | null): SessionInfo 
   const now = nowMs();
   const row = getDb()
     .prepare(
-      `SELECT sessions.id as session_id, users.id as user_id, users.email, users.created_at
+      `SELECT sessions.id as session_id, sessions.last_seen_at, users.id as user_id, users.email, users.created_at
        FROM sessions JOIN users ON users.id = sessions.user_id
        WHERE sessions.token_hash = ? AND sessions.expires_at > ?`
     )
     .get(tokenHash(token), now) as
-    | { session_id: string; user_id: string; email: string; created_at: number }
+    | { session_id: string; last_seen_at: number | null; user_id: string; email: string; created_at: number }
     | undefined;
   if (!row) return null;
+  if (!row.last_seen_at || now - row.last_seen_at >= 5 * 60_000) {
+    getDb().prepare("UPDATE sessions SET last_seen_at = ? WHERE id = ?").run(now, row.session_id);
+  }
   return {
     sessionId: row.session_id,
     user: { id: row.user_id, email: row.email, created_at: row.created_at },
@@ -109,12 +166,31 @@ export function destroySession(token: string | undefined | null): void {
   getDb().prepare("DELETE FROM sessions WHERE token_hash = ?").run(tokenHash(token));
 }
 
-export function destroySessionById(sessionId: string, userId: string): void {
-  getDb().prepare("DELETE FROM sessions WHERE id = ? AND user_id = ?").run(sessionId, userId);
+export function destroySessionById(sessionId: string, userId: string): boolean {
+  return getDb().prepare("DELETE FROM sessions WHERE id = ? AND user_id = ?").run(sessionId, userId).changes > 0;
 }
 
 export function destroyAllSessions(userId: string): void {
   getDb().prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
+}
+
+export function listSessions(userId: string, currentSessionId: string): ActiveSession[] {
+  const now = nowMs();
+  const db = getDb();
+  db.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(now);
+  return (db.prepare(
+    `SELECT id, client_label, ip_hint, created_at, COALESCE(last_seen_at, created_at) AS last_seen_at, expires_at
+     FROM sessions WHERE user_id = ? ORDER BY last_seen_at DESC, created_at DESC`
+  ).all(userId) as Omit<ActiveSession, "current">[]).map((session) => ({
+    ...session,
+    client_label: session.client_label || "Unknown browser",
+    ip_hint: session.ip_hint || "unknown",
+    current: session.id === currentSessionId,
+  }));
+}
+
+export function destroyOtherSessions(userId: string, currentSessionId: string): number {
+  return getDb().prepare("DELETE FROM sessions WHERE user_id = ? AND id <> ?").run(userId, currentSessionId).changes;
 }
 
 export function changePassword(userId: string, currentPassword: string, nextPassword: string): void {
@@ -140,6 +216,7 @@ export function sessionCookie(token: string, secure: boolean): { name: string; v
       sameSite: "lax" as const,
       secure,
       path: "/",
+      priority: "high" as const,
       maxAge: Math.floor(SESSION_TTL_MS / 1000),
     },
   };
@@ -154,6 +231,7 @@ export function clearSessionCookie(secure: boolean): { name: string; value: stri
       sameSite: "lax" as const,
       secure,
       path: "/",
+      priority: "high" as const,
       maxAge: 0,
     },
   };

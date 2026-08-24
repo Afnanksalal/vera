@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@/server/http";
 import { safeRedirectPath } from "@/server/navigation";
 import { cn } from "@/lib/utils";
-import { LogoutButton } from "@/components/account-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +43,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </Link>
             ))}
           </nav>
-          <LogoutButton />
         </div>
       </div>
       {children}

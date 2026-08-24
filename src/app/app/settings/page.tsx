@@ -1,6 +1,7 @@
 import { AiSettingsForm, ApiKeyForm, PasswordForm, RazorpayForm, RevokeKeyButton, SyncButton, SystemSettingsForm } from "@/components/settings-forms";
-import { isOwner, listApiKeys } from "@/server/auth";
-import { currentUser } from "@/server/http";
+import { isOwner, listApiKeys, listSessions } from "@/server/auth";
+import { currentSession } from "@/server/http";
+import { SessionManager } from "@/components/account-actions";
 import { razorpayPublic } from "@/server/razorpay";
 import { aiSettingsPublic, getSystemSettings } from "@/server/settings";
 import { webhookQueueStatus } from "@/server/webhooks";
@@ -8,9 +9,11 @@ import { webhookQueueStatus } from "@/server/webhooks";
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const user = await currentUser();
-  if (!user) return null;
+  const session = await currentSession();
+  if (!session) return null;
+  const user = session.user;
   const keys = listApiKeys(user.id);
+  const sessions = listSessions(user.id, session.sessionId);
   const rzp = razorpayPublic(user.id);
   const system = getSystemSettings();
   const ai = aiSettingsPublic(user.id);
@@ -22,6 +25,11 @@ export default async function SettingsPage() {
         <h2 className="text-lg font-semibold">Account security</h2>
         <p className="text-sm text-muted-foreground">Changing the owner password invalidates every other active session.</p>
         <PasswordForm />
+      </section>
+      <section className="grid gap-3">
+        <h2 className="text-lg font-semibold">Active sessions</h2>
+        <p className="text-sm text-muted-foreground">Review signed-in browsers and revoke anything you do not recognize. Vera stores a derived client label and masked IP hint, never the raw session token.</p>
+        <SessionManager sessions={sessions} />
       </section>
       {isOwner(user.id) ? <section className="grid gap-3">
         <h2 className="text-lg font-semibold">Installation</h2>

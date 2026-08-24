@@ -1,7 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { SESSION_COOKIE } from "./config";
 import { getDb } from "./db";
-import { sessionFromToken, userFromApiKey, type User } from "./auth";
+import { sessionFromToken, userFromApiKey, type SessionInfo, type User } from "./auth";
 
 export class HttpError extends Error {
   constructor(
@@ -30,6 +30,10 @@ export async function currentUser(): Promise<User | null> {
   const key = bearer(hdrs.get("authorization"));
   if (key) return userFromApiKey(key);
   return sessionFromToken(await readSessionToken())?.user ?? null;
+}
+
+export async function currentSession(): Promise<SessionInfo | null> {
+  return sessionFromToken(await readSessionToken());
 }
 
 export async function requireUser(): Promise<User> {

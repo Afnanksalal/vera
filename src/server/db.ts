@@ -167,6 +167,15 @@ const MIGRATIONS: { version: number; sql: string }[] = [
         ON ingest_events(user_id, external_id);
     `,
   },
+  {
+    version: 2,
+    sql: `
+      ALTER TABLE sessions ADD COLUMN client_label TEXT;
+      ALTER TABLE sessions ADD COLUMN ip_hint TEXT;
+      ALTER TABLE sessions ADD COLUMN last_seen_at INTEGER;
+      UPDATE sessions SET last_seen_at = created_at WHERE last_seen_at IS NULL;
+    `,
+  },
 ];
 
 let singleton: Database.Database | undefined;

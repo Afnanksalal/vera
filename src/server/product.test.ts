@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { createUser, createInstallationOwner, authenticate, createSession, sessionFromToken, createApiKey, userFromApiKey, changePassword, destroyAllSessions } from "./auth";
+import { createUser, createInstallationOwner, authenticate, createSession, sessionFromToken, createApiKey, userFromApiKey, changePassword, destroyAllSessions, destroyOtherSessions, destroySessionById, listSessions, sessionContext } from "./auth";
 import { getDb, resetDb } from "./db";
 import { decryptSecret, encryptSecret, hashPassword, hmacSha256Hex, timingSafeEqualHex, verifyPassword } from "./crypto";
 import { ingestRecords, closeUser, latestClose, listReviews, acknowledgeReview } from "./ledger";
@@ -50,6 +50,37 @@ test("signup, session, and API key authenticate", () => {
   assert.ok(key.secret.startsWith("vera_"));
   assert.equal(userFromApiKey(key.secret)?.id, user.id);
   assert.equal(userFromApiKey("vera_notarealkeyvaluexxx"), null);
+});
+
+test("active sessions expose safe metadata and support scoped revocation", () => {
+  const user = createUser("ops@example.com", "super-secret-12");
+  const context = sessionContext(new Headers({
+    "user-agent": "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/140.0 Safari/537.36",
+    "x-forwarded-for": "203.0.113.42",
+  }));
+  assert.deepEqual(context, { clientLabel: "Chrome on Windows", ipHint: "203.0.113.x" });
+  const firstToken = createSession(user.id, context);
+  const secondToken = createSession(user.id, { clientLabel: "Firefox on Linux", ipHint: "198.51.100.x" });
+  const first = sessionFromToken(firstToken)!;
+  const second = sessionFromToken(secondToken)!;
+  const sessions = listSessions(user.id, second.sessionId);
+  assert.equal(sessions.length, 2);
+  assert.equal(sessions.find((item) => item.id === second.sessionId)?.current, true);
+  assert.equal(sessions.find((item) => item.id === first.sessionId)?.ip_hint, "203.0.113.x");
+  assert.equal(destroySessionById("ses_missing", user.id), false);
+  assert.equal(destroySessionById(first.sessionId, user.id), true);
+  assert.equal(sessionFromToken(firstToken), null);
+  assert.equal(destroyOtherSessions(user.id, second.sessionId), 0);
+  assert.equal(sessionFromToken(secondToken)?.sessionId, second.sessionId);
+});
+
+test("session count is capped and expired sessions are removed from inventory", () => {
+  const user = createUser("ops@example.com", "super-secret-12");
+  const tokens = Array.from({ length: 25 }, () => createSession(user.id));
+  const current = sessionFromToken(tokens.at(-1)!)!;
+  assert.equal(listSessions(user.id, current.sessionId).length, 20);
+  getDb().prepare("UPDATE sessions SET expires_at = 0 WHERE id = ?").run(current.sessionId);
+  assert.equal(listSessions(user.id, current.sessionId).some((item) => item.id === current.sessionId), false);
 });
 
 test("installation settings persist without environment configuration", () => {

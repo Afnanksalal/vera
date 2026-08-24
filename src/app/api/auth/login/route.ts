@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { authenticate, createSession, installationHasUser, sessionCookie } from "@/server/auth";
+import { authenticate, createSession, installationHasUser, sessionContext, sessionCookie } from "@/server/auth";
 import { HttpError, assertSameOriginIfCookie, handle, readJson, requestIsSecure } from "@/server/http";
 import { clientIp, normalizeEmail, rateLimit } from "@/server/policy";
 
@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     }
     const user = authenticate(email, String(body.password ?? ""));
     if (!user) throw new HttpError(401, "Invalid email or password.", "invalid_credentials");
-    const token = createSession(user.id);
+    const token = createSession(user.id, sessionContext(req.headers));
     const cookie = sessionCookie(token, requestIsSecure(req));
     (await cookies()).set(cookie.name, cookie.value, cookie.options as never);
     return Response.json({ user: { id: user.id, email: user.email } });
