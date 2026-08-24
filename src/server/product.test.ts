@@ -15,6 +15,7 @@ import { calibrationRows, importCalibration } from "./calibration";
 import { enqueueRazorpayWebhook } from "./webhooks";
 import { mergeRazorpayRecord, settlementFromRazorpayRecon } from "./razorpay";
 import { latestInvestigations, saveInvestigation } from "./investigations";
+import { buildDashboardAnalytics } from "./dashboard";
 
 process.env.VERA_TEST = "1";
 
@@ -185,6 +186,20 @@ test("example ingest closes and opens reviews on faults", () => {
   assert.ok(open.length >= 1);
   const ack = acknowledgeReview(user.id, open[0].id, "noted");
   assert.equal(ack.status, "acknowledged");
+});
+
+test("dashboard analytics use persisted report outcomes without inventing data", () => {
+  const user = createUser("ops@example.com", "super-secret-12");
+  const records = [structuredClone(EXAMPLE_RECORDS[0])];
+  ingestRecords(user.id, "examples", records);
+  const summary = closeUser(user.id);
+  const close = latestClose(user.id)!;
+  const analytics = buildDashboardAnalytics(close.claims, [summary], records);
+  const affected = new Set(close.claims.filter((claim) => claim.status !== "PROVEN").map((claim) => claim.sale_id));
+  assert.equal(analytics.trend.length, 1);
+  assert.equal(analytics.trend[0].passed_percent + analytics.trend[0].attention_percent + analytics.trend[0].inconclusive_percent, 100);
+  assert.equal(analytics.issues.reduce((sum, point) => sum + point.count, 0), close.summary.excepted + close.summary.abstained);
+  assert.equal(analytics.payment_value_with_issues, affected.size ? records[0].payment.amount_minor : 0);
 });
 
 test("settlement verification accepts explicit processor fees and tax", () => {
