@@ -2,6 +2,7 @@ import { closeUser } from "@/server/ledger";
 import { assertSameOriginIfCookie, handle, readJson, requireUser } from "@/server/http";
 import { ingestPaymentId, verifyCheckoutSignature } from "@/server/razorpay";
 import { rateLimit } from "@/server/policy";
+import { attachVerifiedPurchaseEvidence } from "@/server/purchases";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,8 +24,12 @@ export async function POST(req: Request) {
       String(body.razorpay_payment_id ?? ""),
       String(body.razorpay_signature ?? "")
     );
-    const ingest = await ingestPaymentId(user.id, String(body.razorpay_payment_id));
-    const close = body.close === false || ingest.inserted + ingest.updated === 0 ? null : closeUser(user.id);
-    return Response.json({ ingest, close });
+    const paymentId = String(body.razorpay_payment_id);
+    const orderId = String(body.razorpay_order_id);
+    const ingest = await ingestPaymentId(user.id, paymentId);
+    const evidence = attachVerifiedPurchaseEvidence(user.id, orderId, paymentId);
+    const changed = ingest.inserted + ingest.updated + (evidence?.inserted ?? 0) + (evidence?.updated ?? 0);
+    const close = body.close === false || changed === 0 ? null : closeUser(user.id);
+    return Response.json({ ingest, evidence, close });
   });
 }

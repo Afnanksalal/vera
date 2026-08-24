@@ -28,6 +28,13 @@ function optStr(value: unknown, field: string, max = 256): string | undefined {
   return str(value, field, max);
 }
 
+function optEnum<T extends string>(value: unknown, field: string, allowed: readonly T[]): T | undefined {
+  if (value === undefined) return undefined;
+  const parsed = str(value, field);
+  if (!allowed.includes(parsed as T)) throw new HttpError(400, `${field} is invalid.`, "invalid_record");
+  return parsed as T;
+}
+
 function paymentRail(value: unknown, field = "payment.rail"): "acp" | "ap2_card" | "x402" {
   const parsed = str(value, field);
   if (parsed !== "acp" && parsed !== "ap2_card" && parsed !== "x402") {
@@ -78,7 +85,16 @@ export function parseExternalRecord(raw: unknown): ExternalRecord {
   let receipt: ExternalRecord["receipt"] = null;
   if (receiptRaw && typeof receiptRaw === "object") {
     const r = receiptRaw as Record<string, unknown>;
-    receipt = { id: str(r.id, "receipt.id"), stored: Boolean(r.stored) };
+    const source = optEnum(r.source, "receipt.source", ["merchant_signed", "razorpay_invoice", "integration"] as const);
+    receipt = {
+      id: str(r.id, "receipt.id"),
+      stored: Boolean(r.stored),
+      payload_hash: optStr(r.payload_hash, "receipt.payload_hash", 128),
+      issued_at: r.issued_at === undefined ? undefined : dateStr(r.issued_at, "receipt.issued_at"),
+      merchant_signature: optStr(r.merchant_signature, "receipt.merchant_signature", 2048),
+      merchant_public_key_pem: optStr(r.merchant_public_key_pem, "receipt.merchant_public_key_pem", 4096),
+      source: source as NonNullable<ExternalRecord["receipt"]>["source"],
+    };
   }
 
   const bankRaw = rec.bank;
@@ -91,6 +107,9 @@ export function parseExternalRecord(raw: unknown): ExternalRecord {
       date: dateStr(b.date, "bank.date"),
       narration: str(b.narration, "bank.narration", 512),
       intent_ref: b.intent_ref === null ? null : str(b.intent_ref, "bank.intent_ref"),
+      utr: optStr(b.utr, "bank.utr"),
+      source: optEnum(b.source, "bank.source", ["bank_statement", "bank_api", "integration"] as const),
+      source_hash: optStr(b.source_hash, "bank.source_hash", 128),
     };
   }
 
@@ -163,6 +182,8 @@ export function parseExternalRecord(raw: unknown): ExternalRecord {
       net_minor: intPaise(settlement.net_minor, "settlement.net_minor"),
       psp_ref: str(settlement.psp_ref, "psp_ref"),
       settled_on: dateStr(settlement.settled_on, "settled_on"),
+      source: optEnum(settlement.source, "settlement.source", ["razorpay_recon", "processor_api", "processor_report", "integration"] as const),
+      source_hash: optStr(settlement.source_hash, "settlement.source_hash", 128),
     } : null,
     bank,
     refunds,

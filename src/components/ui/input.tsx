@@ -26,9 +26,9 @@ export function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid gap-1.5">
-      <Label>{label}</Label>
+    <Label className="grid gap-1.5 [&_input]:font-normal [&_select]:font-normal">
+      <span>{label}</span>
       {children}
-    </div>
+    </Label>
   );
 }

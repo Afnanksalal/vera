@@ -7,6 +7,7 @@ On first use Vera atomically creates `data/.master_key` with restrictive filesys
 - HMAC protection of sessions and integration API keys.
 - AES-256-GCM encryption of Razorpay and AI provider credentials.
 - Encryption of the installation's persistent Ed25519 private signing key.
+- Encryption of workspace principal and merchant Ed25519 keys used by the web-managed verified-purchase flow.
 
 Back up `data/.master_key` and `data/vera.db` together. Anyone who obtains both can decrypt integration credentials. Losing the master key makes encrypted credentials unrecoverable.
 
@@ -29,12 +30,14 @@ Account registration remains available after initialization. The first account r
 - Live keys require an explicit installation-owner setting.
 - Webhook signatures are checked over the raw body using constant-time HMAC comparison.
 - Checkout signatures are verified and payments are fetched again from Razorpay; browser-supplied amounts are not trusted.
+- Mandate and cart attestations are persisted before the Razorpay order is created and later bound by order ID and immutable hashes.
+- Test mode never fabricates settlement or bank evidence.
 
 ## Ledger integrity
 
 Models are proposers, never mutators. The verifier replays evidence and independently derives each decision. Human reviewers can acknowledge exceptions but cannot rewrite claims.
 
-Bundles are hash-chained and signed by a stable installation identity. Verification checks chain integrity, world hash, signature, deterministic replay, and whether the signer matches the installation public key.
+Version 2 bundles embed attached source files and bind their SHA-256 hashes, the canonical world hash, and the event-chain head into one signed digest. Verification checks artifact bytes, chain integrity, world hash, signature, deterministic replay, and whether the signer matches the installation public key.
 
 ## Operational limits
 

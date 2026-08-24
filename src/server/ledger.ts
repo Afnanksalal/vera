@@ -1,5 +1,5 @@
 import { ingest, type ExternalRecord } from "@/mandate/adapters";
-import { exportBundle } from "@/mandate/bundle";
+import { exportBundle, type AuditArtifact } from "@/mandate/bundle";
 import { sha256 } from "@/mandate/canonical";
 import { runClose } from "@/mandate/orchestrate";
 import type { Claim } from "@/mandate/types";
@@ -81,7 +81,11 @@ export function closeUser(userId: string): CloseSummary {
   if (records.length === 0) throw new HttpError(400, "Nothing to close. Ingest records first.", "empty");
   const world = ingest(records);
   const run = runClose(world);
-  const bundle = exportBundle(world, new Date().toISOString(), signingIdentity(), run);
+  const artifactRows = getDb().prepare(
+    "SELECT id, payment_id, kind, file_name, mime_type, payload_hash, payload FROM evidence_artifacts WHERE user_id = ? ORDER BY created_at ASC, id ASC"
+  ).all(userId) as { id: string; payment_id: string; kind: AuditArtifact["kind"]; file_name: string; mime_type: string; payload_hash: string; payload: Buffer }[];
+  const artifacts: AuditArtifact[] = artifactRows.map((row) => ({ id: row.id, payment_id: row.payment_id, kind: row.kind, file_name: row.file_name, mime_type: row.mime_type, payload_hash: row.payload_hash, data_base64: row.payload.toString("base64") }));
+  const bundle = exportBundle(world, new Date().toISOString(), signingIdentity(), run, artifacts);
   const proven = run.claims.filter((c) => c.status === "PROVEN").length;
   const excepted = run.claims.filter((c) => c.status === "EXCEPTED").length;
   const abstained = run.claims.filter((c) => c.status === "ABSTAINED").length;

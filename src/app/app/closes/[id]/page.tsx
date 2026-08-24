@@ -21,7 +21,7 @@ export default async function CloseDetailPage({ params }: { params: Promise<{ id
   const isCurrent = latest?.summary.id === close.summary.id;
   const ai = aiSettingsPublic(user.id);
   const investigations = latestInvestigations(user.id, close.summary.id);
-  const bundle = close.bundle as { head?: string; events?: unknown[]; summary?: { challenges?: number; tool_calls?: number } } | null;
+  const bundle = close.bundle as { head?: string; signed_digest?: string; artifacts?: unknown[]; events?: unknown[]; summary?: { challenges?: number; tool_calls?: number } } | null;
   const download = `/api/v1/closes/${close.summary.id}?download=bundle`;
   const payments = Array.from(close.claims.reduce((groups, claim) => {
     const current = groups.get(claim.sale_id) ?? [];
@@ -81,7 +81,8 @@ export default async function CloseDetailPage({ params }: { params: Promise<{ id
           <div><p className="text-muted-foreground">Report ID</p><p className="mt-1 break-all font-mono text-xs">{close.summary.id}</p></div>
           <div><p className="text-muted-foreground">Evidence fingerprint</p><p className="mt-1 break-all font-mono text-xs">{close.summary.world_hash}</p></div>
           <div><p className="text-muted-foreground">Signed chain head</p><p className="mt-1 break-all font-mono text-xs">{bundle?.head ?? "—"}</p></div>
-          <div className="flex flex-wrap gap-8"><div><p className="text-muted-foreground">Events</p><p className="mt-1 font-medium">{bundle?.events?.length ?? 0}</p></div><div><p className="text-muted-foreground">Automated lookups</p><p className="mt-1 font-medium">{bundle?.summary?.tool_calls ?? 0}</p></div><div><p className="text-muted-foreground">Verification challenges</p><p className="mt-1 font-medium">{bundle?.summary?.challenges ?? 0}</p></div></div>
+          <div><p className="text-muted-foreground">Signed report digest</p><p className="mt-1 break-all font-mono text-xs">{bundle?.signed_digest ?? bundle?.head ?? "—"}</p></div>
+          <div className="flex flex-wrap gap-8"><div><p className="text-muted-foreground">Source files embedded</p><p className="mt-1 font-medium">{bundle?.artifacts?.length ?? 0}</p></div><div><p className="text-muted-foreground">Events</p><p className="mt-1 font-medium">{bundle?.events?.length ?? 0}</p></div><div><p className="text-muted-foreground">Automated lookups</p><p className="mt-1 font-medium">{bundle?.summary?.tool_calls ?? 0}</p></div><div><p className="text-muted-foreground">Verification challenges</p><p className="mt-1 font-medium">{bundle?.summary?.challenges ?? 0}</p></div></div>
         </div>
       </details>
     </div>

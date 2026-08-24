@@ -51,6 +51,7 @@ export const TOOL_SPECS: ChatToolSpec[] = [
     parameters: strArg("idempotency_key", "the idempotency key"),
   },
   { name: "get_receipt", description: "Fetch the receipt for a payment; empty when absent.", parameters: strArg("payment_id", "the payment id") },
+  { name: "verify_receipt", description: "Verify the receipt hash and merchant attestation.", parameters: strArg("payment_id", "the payment id") },
   { name: "settlement_for_payment", description: "Fetch the settlement covering a payment.", parameters: strArg("payment_id", "the payment id") },
   {
     name: "bank_candidates",

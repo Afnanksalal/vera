@@ -51,10 +51,37 @@ export type ExternalRecord = {
     x402_tx?: string;
     acp_token?: string;
   };
-  receipt: { id: string; stored: boolean } | null;
+  receipt: {
+    id: string;
+    stored: boolean;
+    payload_hash?: string;
+    issued_at?: string;
+    merchant_signature?: string;
+    merchant_public_key_pem?: string;
+    source?: "merchant_signed" | "razorpay_invoice" | "integration";
+  } | null;
   order: { id: string } | null;
-  settlement: { id: string; gross_minor?: number; fee_minor?: number; tax_minor?: number; net_minor: number; psp_ref: string; settled_on: string } | null;
-  bank: { id: string; amount_minor: number; date: string; narration: string; intent_ref: string | null } | null;
+  settlement: {
+    id: string;
+    gross_minor?: number;
+    fee_minor?: number;
+    tax_minor?: number;
+    net_minor: number;
+    psp_ref: string;
+    settled_on: string;
+    source?: "razorpay_recon" | "processor_api" | "processor_report" | "integration";
+    source_hash?: string;
+  } | null;
+  bank: {
+    id: string;
+    amount_minor: number;
+    date: string;
+    narration: string;
+    intent_ref: string | null;
+    utr?: string;
+    source?: "bank_statement" | "bank_api" | "integration";
+    source_hash?: string;
+  } | null;
   refunds?: {
     id: string;
     amount_minor: number;
@@ -184,8 +211,12 @@ export function ingest(records: ExternalRecord[]): World {
       const receipt: Receipt = {
         receipt_id: rec.receipt.id,
         payment_id: rec.payment.id,
-        payload_hash: rec.receipt.stored ? sha256({ payment_id: rec.payment.id }) : "",
+        payload_hash: rec.receipt.payload_hash ?? (rec.receipt.stored ? sha256({ payment_id: rec.payment.id }) : ""),
         stored: rec.receipt.stored,
+        issued_at: rec.receipt.issued_at ?? null,
+        merchant_sig: rec.receipt.merchant_signature ?? "",
+        merchant_public_key_pem: rec.receipt.merchant_public_key_pem ?? "",
+        source: rec.receipt.source ?? "integration",
       };
       world.receipts.push(receipt);
     }
@@ -204,6 +235,8 @@ export function ingest(records: ExternalRecord[]): World {
         net_paise: rec.settlement.net_minor,
         psp_ref: rec.settlement.psp_ref,
         settled_on: rec.settlement.settled_on,
+        source: rec.settlement.source ?? "integration",
+        source_hash: rec.settlement.source_hash ?? "",
       };
       world.settlements.push(settlement);
     }
@@ -215,6 +248,9 @@ export function ingest(records: ExternalRecord[]): World {
         date: rec.bank.date,
         narration: rec.bank.narration,
         intent_id: rec.bank.intent_ref,
+        utr: rec.bank.utr ?? "",
+        source: rec.bank.source ?? "integration",
+        source_hash: rec.bank.source_hash ?? "",
       });
     }
 

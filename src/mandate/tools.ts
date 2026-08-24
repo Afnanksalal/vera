@@ -19,6 +19,7 @@ export type ToolName =
   | "get_payment"
   | "find_payment_by_idempotency"
   | "get_receipt"
+  | "verify_receipt"
   | "settlement_for_payment"
   | "bank_candidates"
   | "bank_lines_in_window"
@@ -140,6 +141,24 @@ export const TOOLS: Record<ToolName, ToolFn> = {
     const receipt: Receipt | null =
       world.receipts.find((r) => r.payment_id === payment_id) ?? null;
     return receipt;
+  },
+
+  verify_receipt(world, args) {
+    const payment_id = req(args, "payment_id");
+    const receipt = world.receipts.find((r) => r.payment_id === payment_id) ?? null;
+    if (!receipt) return { found: false, valid: false, has_hash: false, has_key: false, has_signature: false };
+    const hasHash = Boolean(receipt.payload_hash);
+    const hasKey = Boolean(receipt.merchant_public_key_pem);
+    const hasSignature = Boolean(receipt.merchant_sig);
+    const valid = hasHash && hasKey && hasSignature && Boolean(receipt.issued_at)
+      ? hmacVerify(receipt.merchant_public_key_pem!, {
+          receipt_id: receipt.receipt_id,
+          payment_id: receipt.payment_id,
+          payload_hash: receipt.payload_hash,
+          issued_at: receipt.issued_at,
+        }, receipt.merchant_sig!)
+      : receipt.stored && receipt.source !== "merchant_signed";
+    return { found: true, valid, stored: receipt.stored, has_hash: hasHash, has_key: hasKey, has_signature: hasSignature, source: receipt.source ?? "integration" };
   },
 
   settlement_for_payment(world, args) {

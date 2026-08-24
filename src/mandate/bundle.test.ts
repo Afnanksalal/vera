@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { test } from "node:test";
 import { exportBundle, verifyBundle } from "./bundle";
 import { buildFixture } from "./fixture";
@@ -14,6 +15,18 @@ test("a freshly exported bundle verifies on every check", () => {
   assert.equal(verdict.signature_ok, true);
   assert.equal(verdict.world_hash_ok, true);
   assert.equal(verdict.replay_ok, true);
+  assert.equal(verdict.artifacts_ok, true);
+});
+
+test("editing an embedded source artifact breaks bundle verification", () => {
+  const world = buildFixture({ seed: 42 }).world;
+  const data = Buffer.from("bank statement row");
+  const b = exportBundle(world, "2026-08-23T00:00:00.000Z", undefined, undefined, [{ id: "art_1", payment_id: world.payments[0].payment_id, kind: "bank_statement", file_name: "bank.csv", mime_type: "text/csv", payload_hash: createHash("sha256").update(data).digest("hex"), data_base64: data.toString("base64") }]);
+  assert.equal(verifyBundle(b).ok, true);
+  b.artifacts![0].data_base64 = Buffer.from("tampered statement").toString("base64");
+  const verdict = verifyBundle(b);
+  assert.equal(verdict.artifacts_ok, false);
+  assert.equal(verdict.ok, false);
 });
 
 test("editing a committed claim is caught by replay", () => {

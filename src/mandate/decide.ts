@@ -6,10 +6,10 @@ export const BANK_WINDOW_DAYS = 2;
 
 type CartRow = { total_paise: number };
 type PaymentRow = { amount_paise: number; idempotency_key: string; paid_at: string };
-type SettlementRow = { gross_paise: number; fee_paise: number; tax_paise: number; net_paise: number; settled_on: string };
+type SettlementRow = { gross_paise: number; fee_paise: number; tax_paise: number; net_paise: number; settled_on: string; psp_ref?: string };
 type ReceiptRow = { stored: boolean } | null;
 type RefundRow = { initiator: string; mandate_ref: string | null };
-type BankRow = { amount_paise: number; intent_id: string | null };
+type BankRow = { amount_paise: number; intent_id: string | null; utr?: string };
 type WithinRow =
   | { found: false }
   | { found: true; withinBudget: boolean; categoryMatch: boolean; withinTime: boolean };
@@ -83,6 +83,8 @@ export function decideClaim(world: World, sale: Sale, type: string): Decision {
     case "RECEIPTED": {
       const receipt = call("get_receipt", { payment_id: sale.payment_id }) as ReceiptRow;
       if (!receipt || !receipt.stored) return { action: "except", code: "RECEIPT_ABSENT" };
+      const attestation = call("verify_receipt", { payment_id: sale.payment_id }) as { valid: boolean };
+      if (!attestation.valid) return { action: "except", code: "RECEIPT_ATTESTATION_INVALID" };
       return { action: "prove" };
     }
 
@@ -116,11 +118,16 @@ export function decideClaim(world: World, sale: Sale, type: string): Decision {
       }) as SettlementRow | null;
       if (!payment || !settlement) return { action: "except", code: "BANK_CREDIT_ABSENT" };
       const candidates = call("bank_candidates", {
-        amount_paise: payment.amount_paise,
+        amount_paise: settlement.net_paise,
         date: settlement.settled_on,
         window_days: BANK_WINDOW_DAYS,
       }) as BankRow[];
-      const tagged = candidates.filter((b) => b.intent_id === sale.intent_id);
+      const settlementUtr = settlement.psp_ref ? (settlement.psp_ref.includes("/") ? settlement.psp_ref.split("/").at(-1) : settlement.psp_ref) : null;
+      const tagged = candidates.filter((b) =>
+        (sale.intent_id !== null && b.intent_id === sale.intent_id) ||
+        (settlementUtr && b.utr === settlementUtr) ||
+        (sale.intent_id === null && !settlementUtr && b.intent_id === null)
+      );
       if (tagged.length === 1) return { action: "prove" };
       if (candidates.length === 0) {
         const nearby = call("bank_lines_in_window", {

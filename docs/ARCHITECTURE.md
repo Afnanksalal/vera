@@ -66,11 +66,18 @@ erDiagram
 
 Money is stored as integer paise. Protocol adapters preserve absence: a missing mandate attestation, receipt, settlement, or bank credit remains absent in the canonical world.
 
+## Verified purchase lifecycle
+
+The web-managed purchase path creates evidence before money moves. Vera generates encrypted workspace principal and merchant Ed25519 identities, signs the mandate and exact canonical cart, persists both artifacts, and only then creates the Razorpay order. The order carries the purchase ID and intent/cart hashes. On verified capture Vera fetches the payment from Razorpay, binds it to the stored artifacts, creates a merchant-signed receipt, and immediately closes the workspace.
+
+Settlement and bank proof remain asynchronous. Official Razorpay reconciliation records retain processor provenance and UTR. Other processor reports and bank statements are uploaded with the selected row; Vera stores the original bytes, computes the SHA-256 digest server-side, and includes both the artifact and digest in the signed audit bundle. Test-mode purchases never synthesize settlement or bank movement.
+
 ```mermaid
 flowchart LR
   RZP[Razorpay API and webhooks] --> API[Authenticated ingestion API]
   EXT[AP2 / ACP / x402 JSON] --> API
-  UI[Web console] --> API
+  UI[Web console] --> PRE[Pre-payment signing]
+  PRE --> API
   API --> DB[(SQLite + persistent master key)]
   DB --> ADAPT[Canonical adapters]
   ADAPT --> WORLD[Canonical world]
@@ -80,7 +87,7 @@ flowchart LR
   VER --> CLAIMS[Claim ledger]
   WORLD --> MATCH[Settlement reconciliation]
   WORLD --> ANOM[Anomaly rule validation]
-  CLAIMS --> BUNDLE[Hash chain + installation signature]
+  CLAIMS --> BUNDLE[World + source files + hash chain + installation signature]
 ```
 
 ## Runtime boundaries
@@ -89,7 +96,7 @@ flowchart LR
 - `src/server`: persistence, credentials, policy, Razorpay, analysis orchestration, and installation signing identity.
 - `src/mandate`: pure canonicalization, evidence tools, investigation, challenge, verification, reconciliation, anomaly validation, and bundles.
 
-Runtime code never constructs generated fixtures. Synthetic worlds and calibration datasets are test-only. Razorpay settlement sync consumes the official monthly recon response and preserves its gross, fee, tax, net credit, settlement ID, and UTR. The UTR remains processor provenance; it is not promoted into bank-statement evidence.
+Runtime code never constructs generated fixtures. Synthetic worlds and calibration datasets are test-only. Razorpay settlement sync consumes the official monthly recon response and preserves its gross, fee, tax, net credit, settlement ID, UTR, and canonical source digest. The UTR remains processor provenance until an independently uploaded bank statement or bank API row confirms it.
 
 ## Canonical close
 
@@ -129,7 +136,7 @@ This separation permits model-assisted investigation without treating generated 
 
 ## Reconciliation and anomalies
 
-Settlement-to-bank reconciliation is a subset-sum problem. The deterministic path commits only unique feasible assignments and abstains on ambiguity. An optional model may propose semantic groupings using narration tokens, but `verifyAssignment` enforces exact sums, date windows, known identifiers, and no settlement reuse.
+Settlement-to-bank reconciliation is a subset-sum problem. Per-payment verification matches settlement net—not gross—within the date window and requires a unique mandate reference or UTR. The broader deterministic reconciliation path commits only unique feasible assignments and abstains on ambiguity. An optional model may propose semantic groupings using narration tokens, but `verifyAssignment` enforces exact sums, date windows, known identifiers, and no settlement reuse.
 
 Cross-sale anomaly rules execute in a constrained DSL. Rules must fire on a sufficiently small and coherent group before they are routed to human review. Model-authored rules receive the same deterministic validation as built-in discovery.
 

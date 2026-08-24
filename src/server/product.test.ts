@@ -16,6 +16,9 @@ import { enqueueRazorpayWebhook } from "./webhooks";
 import { mergeRazorpayRecord, settlementFromRazorpayRecon } from "./razorpay";
 import { latestInvestigations, saveInvestigation } from "./investigations";
 import { buildDashboardAnalytics } from "./dashboard";
+import { attachExternalEvidence } from "./evidence";
+import { sha256 } from "@/mandate/canonical";
+import { parseVerifiedPurchaseInput } from "./purchases";
 
 process.env.VERA_TEST = "1";
 
@@ -214,13 +217,40 @@ test("settlement verification accepts explicit processor fees and tax", () => {
 });
 
 test("Razorpay recon maps real gross, fee, tax, credit, settlement, and UTR evidence", () => {
-  assert.deepEqual(settlementFromRazorpayRecon({
+  const row = {
     entity_id: "pay_recon", type: "payment", amount: 100000, credit: 97100, fee: 2900, tax: 0,
     currency: "INR", settled: true, settled_at: 1_568_176_960, settlement_id: "setl_real", settlement_utr: "utr_real",
-  }), {
+  };
+  assert.deepEqual(settlementFromRazorpayRecon(row), {
     id: "setl_real:pay_recon", gross_minor: 100000, fee_minor: 2900, tax_minor: 0, net_minor: 97100,
-    psp_ref: "setl_real/utr_real", settled_on: "2019-09-11T04:42:40.000Z",
+    psp_ref: "setl_real/utr_real", settled_on: "2019-09-11T04:42:40.000Z", source: "razorpay_recon", source_hash: sha256(row),
   });
+});
+
+test("processor and bank artifacts are hashed, persisted, and reconcile on settlement net plus UTR", () => {
+  const user = createUser("evidence@example.com", "super-secret-12");
+  const record = structuredClone(EXAMPLE_RECORDS[0]);
+  record.payment.id = "pay_evidence";
+  record.payment.amount_minor = 10_000;
+  record.ap2_cart!.amount_minor = 10_000;
+  record.ap2_cart!.items = [{ sku: "EVIDENCE", qty: 1, unit_minor: 10_000 }];
+  record.settlement = null;
+  record.bank = null;
+  ingestRecords(user.id, "integration", [record]);
+  const file = Buffer.from("source,row,utr\nprocessor,9410,UTR-100").toString("base64");
+  attachExternalEvidence(user.id, { payment_id: "pay_evidence", kind: "processor", file_name: "recon.csv", mime_type: "text/csv", file_base64: file, settlement_id: "set_100", gross_minor: 10_000, fee_minor: 500, tax_minor: 90, net_minor: 9_410, psp_ref: "set_100/UTR-100", settled_on: "2026-08-14" });
+  attachExternalEvidence(user.id, { payment_id: "pay_evidence", kind: "bank_statement", file_name: "bank.csv", mime_type: "text/csv", file_base64: file, bank_id: "bank_100", amount_minor: 9_410, date: "2026-08-14", narration: "Razorpay settlement UTR-100", utr: "UTR-100", intent_ref: record.ap2_intent!.id });
+  closeUser(user.id);
+  const claims = latestClose(user.id)!.claims;
+  assert.equal(claims.find((claim) => claim.type === "SETTLED")?.status, "PROVEN");
+  assert.equal(claims.find((claim) => claim.type === "BANKED")?.status, "PROVEN");
+  assert.equal((getDb().prepare("SELECT COUNT(*) AS n FROM evidence_artifacts WHERE user_id = ?").get(user.id) as { n: number }).n, 2);
+});
+
+test("verified purchase input enforces exact integer totals and mandate coverage", () => {
+  const parsed = parseVerifiedPurchaseInput({ principal_did: "did:example:principal", agent_did: "did:example:agent", merchant_id: "merchant:verified", category: "software", sku: "SKU-1", quantity: 2, unit_paise: 5_000, budget_paise: 10_000, validity_minutes: 60 });
+  assert.equal(parsed.quantity * parsed.unit_paise, 10_000);
+  assert.throws(() => parseVerifiedPurchaseInput({ ...parsed, budget_paise: 9_999 }), /Mandate budget/);
 });
 
 test("Razorpay refresh preserves richer evidence already attached to the payment", () => {

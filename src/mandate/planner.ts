@@ -42,7 +42,10 @@ function basePlan(world: World, sale: Sale, type: ClaimType): Plan[] {
         { tool: "get_payment", args: { payment_id: sale.payment_id } },
       ];
     case "RECEIPTED":
-      return [{ tool: "get_receipt", args: { payment_id: sale.payment_id } }];
+      return [
+        { tool: "get_receipt", args: { payment_id: sale.payment_id } },
+        { tool: "verify_receipt", args: { payment_id: sale.payment_id } },
+      ];
     case "IDEMPOTENT":
       return [
         { tool: "get_payment", args: { payment_id: sale.payment_id } },
@@ -63,7 +66,7 @@ function basePlan(world: World, sale: Sale, type: ClaimType): Plan[] {
         ...(payment && settlement ? [{
           tool: "bank_candidates",
           args: {
-            amount_paise: payment.amount_paise,
+            amount_paise: settlement.net_paise,
             date: settlement.settled_on,
             window_days: BANK_WINDOW_DAYS,
           },

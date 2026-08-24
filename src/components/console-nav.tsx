@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AlertCircle, BarChart3, CreditCard, FileCheck2, LayoutDashboard, Settings } from "lucide-react";
+import { AlertCircle, BarChart3, CreditCard, FileCheck2, LayoutDashboard, Settings, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -10,7 +10,8 @@ const items = [
   { href: "/app/analysis", label: "Reconcile", icon: BarChart3 },
   { href: "/app/review", label: "Issues", icon: AlertCircle },
   { href: "/app/closes", label: "Reports", icon: FileCheck2 },
-  { href: "/app/pay", label: "Test pay", icon: CreditCard },
+  { href: "/app/pay", label: "Purchase", icon: CreditCard },
+  { href: "/app/evidence", label: "Evidence", icon: ShieldCheck },
   { href: "/app/settings", label: "Settings", icon: Settings },
 ];
 

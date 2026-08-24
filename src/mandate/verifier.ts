@@ -36,6 +36,7 @@ const KNOWN_TOOLS = new Set<ToolName>([
   "get_payment",
   "find_payment_by_idempotency",
   "get_receipt",
+  "verify_receipt",
   "settlement_for_payment",
   "bank_candidates",
   "bank_lines_in_window",

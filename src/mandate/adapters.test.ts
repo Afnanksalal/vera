@@ -49,3 +49,11 @@ test("missing x402 receipt remains absent", () => {
   const receipt = callToolRaw(world, "get_receipt", { payment_id: noReceipt.payment_id });
   assert.equal(receipt, null);
 });
+
+test("a forged merchant-signed receipt is rejected", () => {
+  const record = structuredClone(EXAMPLE_RECORDS[0]);
+  record.receipt = { id: "rcp_forged", stored: true, payload_hash: "a".repeat(64), issued_at: "2026-08-12T09:31:00.000Z", merchant_signature: "forged", merchant_public_key_pem: record.ap2_cart!.merchant_public_key_pem, source: "merchant_signed" };
+  const claim = runClose(ingest([record])).claims.find((row) => row.type === "RECEIPTED");
+  assert.equal(claim?.status, "EXCEPTED");
+  assert.equal(claim?.code, "RECEIPT_ATTESTATION_INVALID");
+});

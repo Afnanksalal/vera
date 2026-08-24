@@ -6,6 +6,7 @@ import { ingestRecords, recordForUser, type IngestResult } from "./ledger";
 import { paymentToRecord, type RazorpayPaymentLike, type RazorpayRefundLike } from "./razorpay-map";
 import { getSystemSettings } from "./settings";
 import type { ExternalRecord } from "@/mandate/adapters";
+import { sha256 } from "@/mandate/canonical";
 
 export type RazorpayPublic = {
   configured: boolean;
@@ -238,6 +239,8 @@ export function settlementFromRazorpayRecon(row: RazorpayReconRow): NonNullable<
     net_minor: row.credit,
     psp_ref: row.settlement_utr ? `${row.settlement_id}/${row.settlement_utr}` : row.settlement_id,
     settled_on: new Date(row.settled_at * 1000).toISOString(),
+    source: "razorpay_recon",
+    source_hash: sha256(row),
   };
 }
 
@@ -289,9 +292,12 @@ export async function syncRazorpayPayments(userId: string, count = 100, settleme
       if (item.status !== "captured" && item.captured !== true) continue;
       try {
         const result = await ingestRazorpayPayment(userId, asPayment(item));
-        inserted += result.inserted;
-        updated += result.updated;
-        unchanged += result.unchanged;
+        const evidence = item.order_id
+          ? (await import("./purchases")).attachVerifiedPurchaseEvidence(userId, item.order_id, item.id)
+          : null;
+        inserted += result.inserted + (evidence?.inserted ?? 0);
+        updated += result.updated + (evidence?.updated ?? 0);
+        unchanged += result.unchanged + (evidence?.unchanged ?? 0);
       } catch (error) {
         failed += 1;
         if (errors.length < 20) errors.push(`${item.id}: ${error instanceof Error ? error.message : "sync failed"}`.slice(0, 500));

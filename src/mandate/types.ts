@@ -26,6 +26,7 @@ export const EXCEPTION_CODES = [
   "CART_ATTESTATION_INVALID",
   "CART_PAYMENT_MISMATCH",
   "RECEIPT_ABSENT",
+  "RECEIPT_ATTESTATION_INVALID",
   "RETRY_DOUBLE_BOOK",
   "SETTLEMENT_ABSENT",
   "SETTLEMENT_DRIFT",
@@ -47,6 +48,7 @@ export const FAULT_TARGET: Record<ExceptionCode, ClaimType> = {
   CART_ATTESTATION_INVALID: "CART_BOUND",
   CART_PAYMENT_MISMATCH: "CART_BOUND",
   RECEIPT_ABSENT: "RECEIPTED",
+  RECEIPT_ATTESTATION_INVALID: "RECEIPTED",
   RETRY_DOUBLE_BOOK: "IDEMPOTENT",
   SETTLEMENT_ABSENT: "SETTLED",
   SETTLEMENT_DRIFT: "SETTLED",
@@ -113,6 +115,10 @@ export type Receipt = {
   payment_id: string;
   payload_hash: string;
   stored: boolean;
+  issued_at?: string | null;
+  merchant_sig?: string;
+  merchant_public_key_pem?: string;
+  source?: "merchant_signed" | "razorpay_invoice" | "integration";
 };
 
 export type Order = {
@@ -130,6 +136,8 @@ export type Settlement = {
   net_paise: Paise;
   psp_ref: string;
   settled_on: string;
+  source?: "razorpay_recon" | "processor_api" | "processor_report" | "integration";
+  source_hash?: string;
 };
 
 export type BankLine = {
@@ -138,6 +146,9 @@ export type BankLine = {
   date: string;
   narration: string;
   intent_id: string | null;
+  utr?: string;
+  source?: "bank_statement" | "bank_api" | "integration";
+  source_hash?: string;
 };
 
 export type Refund = {

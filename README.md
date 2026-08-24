@@ -59,8 +59,10 @@ Open `http://127.0.0.1:43147/signup`. Registration remains available for additio
 1. Set the canonical public URL used for webhook delivery and origin enforcement.
 2. Connect Razorpay test credentials and a webhook secret.
 3. Sync captured payments and the selected month’s official settlement recon.
-4. Optionally connect Anthropic or an OpenAI-compatible model.
-5. Enable live Razorpay keys only after deploying behind HTTPS and configuring backups.
+4. Create a verified purchase: Vera persists and Ed25519-signs the mandate and exact cart before creating the Razorpay order.
+5. Attach the original processor report and bank statement when settlement evidence arrives.
+6. Optionally connect Anthropic or an OpenAI-compatible model.
+7. Enable live Razorpay keys only after deploying behind HTTPS and configuring backups.
 
 Vera creates these files in `data/` on first use:
 
@@ -117,7 +119,7 @@ Every sale is proven, excepted, or explicitly abstained on seven fronts. Nothing
 | --- | --- | --- |
 | **Authorized** | Intent attestation is present and valid; cart is within budget, category, and time | `MANDATE_ATTESTATION_MISSING`, `MANDATE_ATTESTATION_INVALID`, `MANDATE_OVERSPEND`, `MANDATE_EXPIRED` |
 | **Cart bound** | Merchant attestation is present and valid, cart hash recomputes, line items total correctly, and payment equals the cart total | `CART_ATTESTATION_MISSING`, `CART_ATTESTATION_INVALID`, `CART_PAYMENT_MISMATCH` |
-| **Receipted** | A durable receipt exists for the captured payment | `RECEIPT_ABSENT` |
+| **Receipted** | A durable receipt exists and its merchant attestation verifies when present | `RECEIPT_ABSENT`, `RECEIPT_ATTESTATION_INVALID` |
 | **Idempotent** | Exactly one payment exists per idempotency key | `RETRY_DOUBLE_BOOK` |
 | **Settled** | A real settlement exists and gross − fees − tax equals net | `SETTLEMENT_ABSENT`, `SETTLEMENT_DRIFT` |
 | **Banked** | A real bank credit reconciles to settlement units | `BANK_CREDIT_ABSENT`, `CHANNEL_UNTAGGED` |
@@ -131,7 +133,8 @@ All money is integer paise. Floating-point amounts never enter the canonical led
 - `/app/analysis`: deterministic and model-proposed reconciliation, real-data selective-risk calibration, cross-sale anomaly detection, and per-sale AI investigation.
 - `/app/review`: acknowledge exceptions without rewriting verifier output.
 - `/app/closes`: close history, audit-bundle download, trusted verification, and installation public-key export.
-- `/app/pay`: Razorpay Checkout test flow.
+- `/app/pay`: pre-payment mandate and cart signing followed by Razorpay Checkout.
+- `/app/evidence`: processor-report and bank-statement attachment with server-computed file hashes.
 - `/app/settings`: installation, AI, integration API-key, and Razorpay configuration.
 
 There are no seeded or fixture-backed runtime pages. Fixtures remain test-only and never enter the product database.
@@ -140,7 +143,7 @@ There are no seeded or fixture-backed runtime pages. Fixtures remain test-only a
 
 An investigator may gather evidence and propose a result. Vera then replays cited tools, challenges inconsistencies, and independently re-derives the decision. Only the verifier can commit `PROVEN`, `EXCEPTED`, or `ABSTAINED`.
 
-Each installation owns one persistent Ed25519 signing identity. Audit bundles contain the complete canonical world, committed claims, event hash chain, signature, and public key. The web verifier additionally checks that the bundle signer matches the installation public key.
+Each installation owns one persistent Ed25519 audit identity. Every workspace also gets encrypted principal and merchant signing identities for the web-managed verified-purchase flow; external AP2/ACP/x402 integrations can supply their own public keys and signatures. Version 2 audit bundles contain the canonical world, original source files, their hashes, committed claims, event hash chain, a digest binding all of those contents, the installation signature, and the public key. The web verifier additionally checks that the bundle signer matches the installation public key.
 
 ## Integration API
 

@@ -160,6 +160,50 @@ CREATE TABLE IF NOT EXISTS webhook_events (
 );
 
 CREATE INDEX IF NOT EXISTS webhook_events_status ON webhook_events(status, created_at);
+
+CREATE TABLE IF NOT EXISTS evidence_signers (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL CHECK (kind IN ('principal', 'merchant')),
+  public_key_pem TEXT NOT NULL,
+  private_key_cipher TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  UNIQUE(user_id, kind)
+);
+
+CREATE TABLE IF NOT EXISTS verified_purchases (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  state TEXT NOT NULL CHECK (state IN ('creating', 'ready', 'paid', 'failed')),
+  mode TEXT NOT NULL CHECK (mode IN ('test', 'live')),
+  intent_json TEXT NOT NULL,
+  cart_json TEXT NOT NULL,
+  intent_hash TEXT NOT NULL,
+  cart_hash TEXT NOT NULL,
+  order_id TEXT UNIQUE,
+  payment_id TEXT UNIQUE,
+  failure_reason TEXT,
+  created_at INTEGER NOT NULL,
+  paid_at INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS verified_purchases_user
+  ON verified_purchases(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS evidence_artifacts (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  payment_id TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('processor', 'bank_statement', 'receipt')),
+  file_name TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  payload BLOB NOT NULL,
+  payload_hash TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS evidence_artifacts_payment
+  ON evidence_artifacts(user_id, payment_id, kind, created_at DESC);
 `;
 
 const MIGRATIONS: { version: number; sql: string }[] = [
@@ -214,6 +258,55 @@ const MIGRATIONS: { version: number; sql: string }[] = [
       );
       CREATE INDEX IF NOT EXISTS ai_investigations_user_sale
         ON ai_investigations(user_id, sale_id, created_at DESC);
+    `,
+  },
+  {
+    version: 5,
+    sql: `
+      CREATE TABLE IF NOT EXISTS evidence_signers (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL CHECK (kind IN ('principal', 'merchant')),
+        public_key_pem TEXT NOT NULL,
+        private_key_cipher TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        UNIQUE(user_id, kind)
+      );
+      CREATE TABLE IF NOT EXISTS verified_purchases (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        state TEXT NOT NULL CHECK (state IN ('creating', 'ready', 'paid', 'failed')),
+        mode TEXT NOT NULL CHECK (mode IN ('test', 'live')),
+        intent_json TEXT NOT NULL,
+        cart_json TEXT NOT NULL,
+        intent_hash TEXT NOT NULL,
+        cart_hash TEXT NOT NULL,
+        order_id TEXT UNIQUE,
+        payment_id TEXT UNIQUE,
+        failure_reason TEXT,
+        created_at INTEGER NOT NULL,
+        paid_at INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS verified_purchases_user
+        ON verified_purchases(user_id, created_at DESC);
+    `,
+  },
+  {
+    version: 6,
+    sql: `
+      CREATE TABLE IF NOT EXISTS evidence_artifacts (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        payment_id TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('processor', 'bank_statement', 'receipt')),
+        file_name TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        payload BLOB NOT NULL,
+        payload_hash TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS evidence_artifacts_payment
+        ON evidence_artifacts(user_id, payment_id, kind, created_at DESC);
     `,
   },
 ];

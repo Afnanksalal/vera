@@ -29,7 +29,7 @@ const SYSTEM = [
   "Claim meanings:",
   "- AUTHORIZED: intent attestation must exist and be valid, then the cart must be within budget, category, and time. Use MANDATE_ATTESTATION_MISSING or MANDATE_ATTESTATION_INVALID for attestation failures, MANDATE_OVERSPEND for budget/category, and MANDATE_EXPIRED for time.",
   "- CART_BOUND: cart attestation must exist and be valid, cart hash must match, line items must sum to the cart total, and payment amount must equal that total. Use CART_ATTESTATION_MISSING, CART_ATTESTATION_INVALID, or CART_PAYMENT_MISMATCH.",
-  "- RECEIPTED: a stored receipt exists. Else RECEIPT_ABSENT.",
+  "- RECEIPTED: a durable receipt exists and any merchant attestation is valid. Else RECEIPT_ABSENT or RECEIPT_ATTESTATION_INVALID.",
   "- IDEMPOTENT: exactly one payment for the idempotency key. Else RETRY_DOUBLE_BOOK.",
   "- SETTLED: a settlement exists, gross equals the payment, and gross minus fees and tax equals net. Else SETTLEMENT_ABSENT or SETTLEMENT_DRIFT.",
   "- BANKED: bank evidence exists and exactly one credit is tagged to this intent. Else BANK_CREDIT_ABSENT or CHANNEL_UNTAGGED.",
