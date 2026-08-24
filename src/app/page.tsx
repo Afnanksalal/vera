@@ -13,7 +13,12 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   alternates: { canonical: "/" },
   openGraph: { url: "/", title: SITE_TITLE, description: SITE_DESCRIPTION },
-  twitter: { title: SITE_TITLE, description: SITE_DESCRIPTION },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: ["/twitter-image"],
+  },
 };
 
 const CHECKS = [
