@@ -147,6 +147,8 @@ export function RazorpayForm({ webhookUrl, configured, initialKeyId, hasWebhookS
   const [keyId, setKeyId] = useState(initialKeyId);
   const [keySecret, setKeySecret] = useState("");
   const [webhookSecret, setWebhookSecret] = useState("");
+  const [isConfigured, setIsConfigured] = useState(configured);
+  const [hasStoredWebhookSecret, setHasStoredWebhookSecret] = useState(hasWebhookSecret);
   const [message, setMessage] = useState<string | null>(null);
 
   return (
@@ -161,24 +163,31 @@ export function RazorpayForm({ webhookUrl, configured, initialKeyId, hasWebhookS
         });
         const data = (await res.json()) as { error?: string };
         setMessage(res.ok ? "Saved. Secrets are encrypted at rest." : data.error || "Save failed");
-        if (res.ok) router.refresh();
+        if (res.ok) {
+          setIsConfigured(true);
+          setHasStoredWebhookSecret(hasStoredWebhookSecret || Boolean(webhookSecret));
+          setKeySecret("");
+          setWebhookSecret("");
+          router.refresh();
+        }
       }}
     >
       <Field label="Key ID (rzp_test_… or rzp_live_…)">
         <Input value={keyId} onChange={(e) => setKeyId(e.target.value)} autoComplete="off" />
       </Field>
-      <Field label={configured ? "Replace key secret (leave blank to keep current)" : "Key secret"}>
-        <Input type="password" required={!configured} value={keySecret} onChange={(e) => setKeySecret(e.target.value)} autoComplete="new-password" />
+      <Field label={isConfigured ? "Replace key secret (leave unchanged to keep current)" : "Key secret"}>
+        <Input type="password" required={!isConfigured} value={keySecret} placeholder={isConfigured ? "••••••••••••••••" : undefined} onChange={(e) => setKeySecret(e.target.value)} autoComplete="new-password" />
       </Field>
-      <Field label={hasWebhookSecret ? "Replace webhook secret (leave blank to keep current)" : "Webhook secret"}>
-        <Input type="password" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} autoComplete="new-password" />
+      <Field label={hasStoredWebhookSecret ? "Replace webhook secret (leave unchanged to keep current)" : "Webhook secret"}>
+        <Input type="password" value={webhookSecret} placeholder={hasStoredWebhookSecret ? "••••••••••••••••" : undefined} onChange={(e) => setWebhookSecret(e.target.value)} autoComplete="new-password" />
       </Field>
+      <p className="text-xs leading-relaxed text-muted-foreground">Use the same secret in Razorpay for the webhook URL below. Vera uses it to verify that incoming payment events genuinely came from Razorpay.</p>
       <p className="text-xs text-muted-foreground">
         Webhook URL: <span className="font-mono break-all">{webhookUrl}</span>
       </p>
       <div className="flex flex-wrap gap-3">
-        <Button type="submit" className="h-10 w-fit px-4">{configured ? "Update Razorpay connection" : "Connect Razorpay"}</Button>
-        {configured ? <Button type="button" variant="outline" onClick={async () => {
+        <Button type="submit" className="h-10 w-fit px-4">{isConfigured ? "Update Razorpay connection" : "Connect Razorpay"}</Button>
+        {isConfigured ? <Button type="button" variant="outline" onClick={async () => {
           const res = await fetch("/api/v1/razorpay", { method: "DELETE" });
           const data = (await res.json()) as { error?: string };
           if (!res.ok) return setMessage(data.error || "Disconnect failed");
