@@ -62,10 +62,7 @@ export function PaymentInvestigation({
           <BrainCircuit aria-hidden className="mt-0.5 size-5 shrink-0 text-brand" />
           <div>
             <p className="font-medium">AI investigation</p>
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-              AI examines the stored evidence and explains this payment. Vera independently verifies every suggestion.
-            </p>
-            {result ? <p className="mt-2 text-xs text-muted-foreground">Last run {formatDateTime(result.created_at)} with {result.model}</p> : configured ? <p className="mt-2 text-xs text-muted-foreground">Ready to investigate with {model ?? "your configured model"}.</p> : null}
+            {result ? <p className="mt-1 text-xs text-muted-foreground">{formatDateTime(result.created_at)} · {result.model}</p> : configured ? <p className="mt-1 text-xs text-muted-foreground">{model ?? "Configured model"}</p> : null}
           </div>
         </div>
         {configured && canRun ? (
@@ -84,11 +81,11 @@ export function PaymentInvestigation({
       {result ? (
         <div className="mt-4 border-t border-brand/15 pt-4">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-            <span className="inline-flex items-center gap-1.5 font-medium text-ok"><ShieldCheck aria-hidden className="size-4" />{confirmed} AI suggestions verified</span>
-            {rejected ? <span className="font-medium text-bad">{rejected} rejected by Vera</span> : null}
+            <span className="inline-flex items-center gap-1.5 font-medium text-ok"><ShieldCheck aria-hidden className="size-4" />{confirmed} verified</span>
+            {rejected ? <span className="font-medium text-bad">{rejected} rejected</span> : null}
             <span className="text-muted-foreground">{result.tool_calls} evidence lookups</span>
           </div>
-          <Disclosure title="View AI findings and Vera’s decisions" className="mt-3" triggerClassName="text-brand" panelClassName="pt-3">
+          <Disclosure title="Findings" className="mt-3" triggerClassName="text-brand" panelClassName="pt-3">
             <div className="grid gap-2">
               {result.claims.map((claim) => (
                 <div key={claim.type} className="rounded-lg border border-border bg-background/70 p-3">
@@ -98,7 +95,7 @@ export function PaymentInvestigation({
                   </div>
                   <p className={cn("mt-1 text-sm", claim.final_status === "PROVEN" ? "text-ok" : "text-bad")}>Vera: {friendlyStatus(claim.final_status)}{claim.final_code ? ` · ${friendlyCode(claim.final_code)}` : ""}</p>
                   {claim.rationale ? <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{claim.rationale}</p> : null}
-                  {!claim.verifier_accepted && claim.ai_action !== "abstain" ? <p className="mt-1 text-xs font-medium text-bad">Vera rejected this AI suggestion because the evidence did not support it.</p> : null}
+                  {!claim.verifier_accepted && claim.ai_action !== "abstain" ? <p className="mt-1 text-xs font-medium text-bad">Rejected by evidence</p> : null}
                 </div>
               ))}
             </div>

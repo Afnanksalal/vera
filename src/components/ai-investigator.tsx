@@ -64,12 +64,7 @@ export function AiInvestigator({
   return (
     <section className="rounded-2xl border border-border bg-card p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">Ask AI to investigate a payment</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            The model suggests what may have happened. Vera checks the suggestion against the stored evidence before showing a result.
-          </p>
-        </div>
+        <h2 className="text-lg font-semibold">AI investigation</h2>
         {status.enabled && (
           <p className="text-xs text-muted-foreground">
             {status.provider} {status.name}
@@ -114,9 +109,7 @@ export function AiInvestigator({
 
       {result && (
         <div className="mt-5">
-          <p className="text-sm text-muted-foreground">
-            Investigation complete for <span className="font-mono">{result.sale_id}</span>.
-          </p>
+          <p className="font-mono text-xs text-muted-foreground">{result.sale_id}</p>
           <div className="mt-3 space-y-2">
             {result.claims.map((c) => {
               const disagreed =
@@ -129,7 +122,7 @@ export function AiInvestigator({
                     <span className="text-sm font-semibold">{friendlyClaim(c.type)}</span>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-muted-foreground">
                       <span>
-                        AI suggestion: {c.ai_action}
+                        AI: {c.ai_action}
                         {c.ai_code ? ` · ${friendlyCode(c.ai_code)}` : ""}
                       </span>
                       <span className={c.verifier_accepted ? "text-[color:var(--ok)]" : "text-[color:var(--bad)]"}>
@@ -141,7 +134,7 @@ export function AiInvestigator({
                   {c.rationale && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{c.rationale}</p>}
                   {disagreed && (
                     <p className="mt-1 text-xs font-medium text-[color:var(--bad)]">
-                      Vera rejected the AI suggestion because the evidence did not support it.
+                      Rejected by evidence
                     </p>
                   )}
                 </div>

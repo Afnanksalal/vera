@@ -25,9 +25,9 @@ export default async function ReviewPage() {
 
   return (
     <div className="grid gap-8">
-      <PageHeader title="Issues" description="Vera identifies the evidence problem first. Run an AI investigation on any payment for an explanation that is checked against the same evidence before you act." />
+      <PageHeader title="Issues" />
       {open.length === 0 ? (
-        <EmptyState icon={CheckCircle2} title="Nothing needs your attention" description="There are no open issues from your latest checks." />
+        <EmptyState icon={CheckCircle2} title="No open issues" />
       ) : (
         <div className="grid gap-4">
           {[...payments.entries()].map(([saleId, issues]) => (

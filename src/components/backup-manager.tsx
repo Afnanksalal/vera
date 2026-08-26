@@ -34,7 +34,7 @@ export function BackupManager({ history }: { history: History[] }) {
       const name = disposition.match(/filename="([^"]+)"/)?.[1] ?? "vera-backup.vera";
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a"); anchor.href = url; anchor.download = name; anchor.click(); URL.revokeObjectURL(url);
-      setMessage("Encrypted backup downloaded. Keep the file and passphrase in separate secure locations.");
+      setMessage("Encrypted backup downloaded.");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Backup failed."); }
     finally { setPending(false); }
   }
@@ -47,7 +47,7 @@ export function BackupManager({ history }: { history: History[] }) {
       const response = await fetch("/api/v1/backups", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ passphrase, file_base64: await fileBase64(file) }) });
       const body = await response.json() as { error?: string; created_at?: string; database_bytes?: number };
       if (!response.ok) throw new Error(body.error || "Verification failed.");
-      setMessage(`Backup verified. Created ${new Date(body.created_at!).toLocaleString()} with ${Math.round((body.database_bytes ?? 0) / 1024).toLocaleString()} KB of recoverable data.`);
+      setMessage(`Verified · ${new Date(body.created_at!).toLocaleString()} · ${Math.round((body.database_bytes ?? 0) / 1024).toLocaleString()} KB`);
     } catch (error) { setMessage(error instanceof Error ? error.message : "Verification failed."); }
     finally { setPending(false); }
   }
@@ -55,7 +55,7 @@ export function BackupManager({ history }: { history: History[] }) {
   return <div className="grid gap-5">
     <div className="grid max-w-lg gap-3">
       <Field label="Backup passphrase"><Input type="password" minLength={16} maxLength={256} autoComplete="new-password" placeholder="At least 16 characters" value={passphrase} onChange={(event) => setPassphrase(event.target.value)} /></Field>
-      <p className="text-xs leading-relaxed text-muted-foreground">The download contains the database and installation encryption key inside one AES-256-GCM encrypted file. Vera never stores the passphrase.</p>
+      <p className="text-xs text-muted-foreground">Includes the database and master key. Passphrase not stored.</p>
       <div className="flex flex-wrap gap-3"><Button type="button" disabled={pending || passphrase.length < 16} onClick={create}>{pending ? "Working…" : "Download encrypted backup"}</Button><Button type="button" variant="outline" disabled={pending || passphrase.length < 16} onClick={verify}>Verify a backup</Button></div>
       <FileInput ref={verifyRef} accept=".vera,application/vnd.vera.backup+json" />
       {message ? <Notice>{message}</Notice> : null}

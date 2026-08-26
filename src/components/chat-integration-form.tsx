@@ -55,34 +55,31 @@ export function ChatIntegrationForm({ integration, commandUrl }: { integration: 
 
   return <form className="rounded-xl border border-border p-4 sm:p-5" onSubmit={(event) => { event.preventDefault(); void request("PUT"); }}>
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h3 className="font-semibold">{label}</h3>
-        <p className="mt-1 text-sm text-muted-foreground">{provider === "slack" ? "Notify a Slack channel and answer signed slash commands." : "Notify a Discord channel and answer signed application commands."}</p>
-      </div>
+      <h3 className="font-semibold">{label}</h3>
       <span className={integration.configured && integration.enabled ? "rounded-full bg-ok/10 px-2.5 py-1 text-xs font-medium text-ok" : "rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground"}>
         {integration.configured ? (integration.enabled ? "Connected" : "Paused") : "Not connected"}
       </span>
     </div>
 
     <div className="mt-5 grid max-w-xl gap-3">
-      <Field label={integration.configured ? `Replace ${label} webhook URL (leave unchanged to keep current)` : `${label} webhook URL`}>
+      <Field label="Webhook URL">
         <Input type="password" required={!integration.configured} autoComplete="new-password" value={webhookUrl} placeholder={integration.configured ? "••••••••••••••••" : provider === "slack" ? "https://hooks.slack.com/services/…" : "https://discord.com/api/webhooks/…"} onChange={(event) => setWebhookUrl(event.target.value)} />
       </Field>
-      <Field label={provider === "slack" ? (integration.commands_configured ? "Replace Slack signing secret (leave unchanged to keep current)" : "Slack signing secret (optional)") : (integration.commands_configured ? "Replace Discord application public key (leave unchanged to keep current)" : "Discord application public key (optional)")}>
-        <Input type={provider === "slack" ? "password" : "text"} autoComplete="new-password" value={commandCredential} placeholder={integration.commands_configured ? "••••••••••••••••" : provider === "slack" ? "Enables verified /vera commands" : "64-character public key"} onChange={(event) => setCommandCredential(event.target.value)} className={provider === "discord" ? "font-mono text-xs" : undefined} />
+      <Field label={provider === "slack" ? "Signing secret" : "Application public key"}>
+        <Input type={provider === "slack" ? "password" : "text"} autoComplete="new-password" value={commandCredential} placeholder={integration.commands_configured ? "••••••••••••••••" : provider === "slack" ? "Optional" : "64-character public key"} onChange={(event) => setCommandCredential(event.target.value)} className={provider === "discord" ? "font-mono text-xs" : undefined} />
       </Field>
       {provider === "discord" ? <>
-        <Field label="Discord application ID"><Input inputMode="numeric" pattern="[0-9]{16,22}" value={applicationId} placeholder="Application ID" onChange={(event) => setApplicationId(event.target.value)} /></Field>
-        <Field label={integration.application_id ? "Replace Discord bot token (leave unchanged to keep current)" : "Discord bot token (optional)"}><Input type="password" autoComplete="new-password" value={botToken} placeholder={integration.application_id ? "••••••••••••••••" : "Required only for automatic command registration"} onChange={(event) => setBotToken(event.target.value)} /></Field>
+        <Field label="Application ID"><Input inputMode="numeric" pattern="[0-9]{16,22}" value={applicationId} placeholder="Application ID" onChange={(event) => setApplicationId(event.target.value)} /></Field>
+        <Field label="Bot token"><Input type="password" autoComplete="new-password" value={botToken} placeholder={integration.application_id ? "••••••••••••••••" : "Optional"} onChange={(event) => setBotToken(event.target.value)} /></Field>
       </> : null}
       <div className="rounded-lg bg-muted/60 p-3 text-xs leading-relaxed text-muted-foreground">
         <p className="font-medium text-foreground">Command endpoint</p>
-        <p className="mt-1 break-all font-mono">{commandUrl || "Set the installation Public URL to generate a public command endpoint."}</p>
-        <p className="mt-2">{provider === "slack" ? "Use this as the Request URL for a /vera Slack command. Vera verifies Slack’s signature before returning read-only issues or payment summaries." : "Use this as the Discord Interactions Endpoint URL. Create a vera command with issues and payment subcommands; Vera verifies every Ed25519-signed interaction."}</p>
+        <p className="mt-1 break-all font-mono">{commandUrl || "Public URL required"}</p>
+        <p className="mt-2">{provider === "slack" ? "Request URL" : "Interactions URL"}</p>
       </div>
-      <CheckboxField checked={enabled} onCheckedChange={setEnabled} label="Enable delivery" description="Pause notifications and commands without deleting encrypted configuration." />
-      <CheckboxField checked={notifyReports} onCheckedChange={setNotifyReports} label="Clean reports" description="Notify when every available check completes without an evidence issue." />
-      <CheckboxField checked={notifyIssues} onCheckedChange={setNotifyIssues} label="Reports needing attention" description="Notify when a signed report contains missing or conflicting evidence." />
+      <CheckboxField checked={enabled} onCheckedChange={setEnabled} label="Enabled" />
+      <CheckboxField checked={notifyReports} onCheckedChange={setNotifyReports} label="Clean reports" />
+      <CheckboxField checked={notifyIssues} onCheckedChange={setNotifyIssues} label="Reports needing attention" />
       <div className="flex flex-wrap gap-3 pt-1">
         <Button type="submit" disabled={pending}>{integration.configured ? `Update ${label}` : `Connect ${label}`}</Button>
         {integration.configured ? <Button type="button" variant="outline" disabled={pending || !integration.enabled} onClick={() => request("POST", "test")}>Send test</Button> : null}

@@ -30,7 +30,7 @@ test("organization invitation shares the workspace and role is enforced", async 
   await invited.goto(invitation); await invited.getByRole("button", { name: "Join organization" }).click();
   await expect(invited).toHaveURL(/\/app/); await invited.goto("/app/settings");
   await expect(invited.getByText("viewer", { exact: true }).first()).toBeVisible();
-  await expect(invited.getByText("Integration key metadata is hidden from your role.")).toBeVisible();
+  await expect(invited.getByText("Not available for this role.").first()).toBeVisible();
   const response = await invited.request.post("/api/v1/ingest", { data: { records: [] } });
   expect(response.status()).toBe(403);
   await owner.close(); await viewer.close();

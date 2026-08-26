@@ -13,7 +13,7 @@ export function BundleVerifier() {
     try {
       const res = await fetch("/api/v1/verify-bundle", { method: "POST", headers: { "content-type": "application/json" }, body: await selected.text() });
       const data = (await res.json()) as { ok?: boolean; trusted_signer?: boolean; notes?: string[]; error?: string };
-      setStatus(res.ok && data.ok ? "Verified: evidence files, chain, replay, signature, and installation identity are valid." : data.error || data.notes?.join("; ") || (data.trusted_signer === false ? "Signature is valid but not from this Vera installation." : "Verification failed."));
+      setStatus(res.ok && data.ok ? "Bundle verified" : data.error || data.notes?.join("; ") || (data.trusted_signer === false ? "Valid signature · different installation" : "Verification failed."));
     } catch (error) { setStatus(error instanceof Error ? error.message : "Verification failed."); }
   }}>Verify bundle</Button>{status ? <p className="text-sm text-muted-foreground">{status}</p> : null}</div>;
 }

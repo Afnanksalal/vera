@@ -26,9 +26,6 @@ export default async function LoginPage({
   return (
     <div className="mx-auto flex min-h-[70vh] w-full max-w-md flex-col justify-center px-5 py-16">
       <h1 className="font-display text-3xl font-semibold tracking-tight">Sign in</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Sign in to your Vera workspace. Integration API keys are managed in Settings.
-      </p>
       {notice === "signed_out" ? (
         <Notice className="mt-5">You have been signed out.</Notice>
       ) : null}

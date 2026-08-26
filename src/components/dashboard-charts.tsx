@@ -46,7 +46,6 @@ function TrendChart({ points }: { points: ReportTrendPoint[] }) {
       </svg>
       <div className="flex justify-between px-4 pb-3 text-[11px] text-muted-foreground">{labels.map((point) => <span key={point.id}>{new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short" }).format(new Date(point.created_at))}</span>)}</div>
     </div>
-    {points.length === 1 ? <p className="mt-3 text-xs text-muted-foreground">The trend becomes more useful as new reports are created. This line shows the current report only.</p> : null}
   </div>;
 }
 
@@ -71,16 +70,16 @@ export function DashboardCharts({ analytics, close }: { analytics: DashboardAnal
   const maxIssueCount = Math.max(...analytics.issues.map((point) => point.count), 1);
   return <section aria-labelledby="operational-pulse-title" className="grid gap-4">
     <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-      <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand">Live from your reports</p><h2 id="operational-pulse-title" className="mt-1 font-display text-2xl font-semibold tracking-tight">Operational pulse</h2></div>
+      <h2 id="operational-pulse-title" className="font-display text-2xl font-semibold tracking-tight">Report trends</h2>
       {analytics.payments_with_issues > 0 ? <div className="flex max-w-full items-start gap-2 self-start rounded-2xl bg-bad/[0.07] px-3 py-1.5 text-xs font-medium leading-relaxed text-bad sm:self-auto"><ArrowUpRight aria-hidden className="mt-0.5 size-3.5 shrink-0"/><span>{inr(analytics.payment_value_with_issues)} across {analytics.payments_with_issues} flagged {analytics.payments_with_issues === 1 ? "payment" : "payments"}</span></div> : <div className="flex max-w-full items-start gap-2 self-start rounded-2xl bg-ok/[0.08] px-3 py-1.5 text-xs font-medium leading-relaxed text-ok sm:self-auto"><CircleCheckBig aria-hidden className="mt-0.5 size-3.5 shrink-0"/><span>No payment value is currently flagged</span></div>}
     </div>
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.8fr)]">
       <article className="rounded-2xl border border-border bg-card p-5 shadow-[0_16px_50px_-38px_rgba(15,23,42,0.35)] sm:p-6">
-        <div className="mb-5"><h3 className="font-semibold">Report health</h3><p className="mt-1 text-sm text-muted-foreground">Verified outcomes over time—not a forecast.</p></div>
+        <div className="mb-5"><h3 className="font-semibold">Report health</h3></div>
         <TrendChart points={analytics.trend}/>
       </article>
       <article className="rounded-2xl border border-border bg-card p-5 shadow-[0_16px_50px_-38px_rgba(15,23,42,0.35)] sm:p-6">
-        <div className="mb-6"><h3 className="font-semibold">Latest result mix</h3><p className="mt-1 text-sm text-muted-foreground">Every check in the newest report.</p></div>
+        <div className="mb-6"><h3 className="font-semibold">Latest result mix</h3></div>
         <ResultMix close={close}/>
       </article>
     </div>
@@ -90,7 +89,6 @@ export function DashboardCharts({ analytics, close }: { analytics: DashboardAnal
           <div aria-hidden className="absolute -right-16 -top-16 size-48 rounded-full bg-brand/10 blur-3xl"/>
           <Sparkles aria-hidden className="relative size-5 text-brand"/>
           <h3 className="relative mt-4 font-display text-2xl font-semibold">Where to focus</h3>
-          <p className="relative mt-2 text-sm leading-relaxed text-muted-foreground">Checks with the most missing, conflicting, or inconclusive evidence in the latest report.</p>
         </div>
         <div className="p-5 sm:p-6">
           {analytics.issues.length ? <div className="grid gap-4">{analytics.issues.map((point) => <div key={point.type} className="grid min-w-0 grid-cols-[minmax(0,1fr)_2rem] items-center gap-x-3 gap-y-2 sm:grid-cols-[minmax(8rem,0.75fr)_minmax(7rem,1.25fr)_2rem]"><span className="min-w-0 truncate text-sm font-medium">{friendlyClaim(point.type)}</span><div className="col-span-2 row-start-2 h-2.5 overflow-hidden rounded-full bg-muted sm:col-span-1 sm:col-start-2 sm:row-start-1"><div className="h-full min-w-2 rounded-full bg-gradient-to-r from-bad/70 to-bad" style={{ width: `${Math.max(8, point.count / maxIssueCount * 100)}%` }}/></div><span className="col-start-2 row-start-1 text-right text-sm font-semibold tabular-nums text-bad sm:col-start-3">{point.count}</span></div>)}</div> : <div className="flex min-h-28 items-center justify-center gap-3 text-sm text-muted-foreground"><CircleCheckBig aria-hidden className="size-5 shrink-0 text-ok"/>Every check passed in the latest report.</div>}

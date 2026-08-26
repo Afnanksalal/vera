@@ -36,7 +36,7 @@ export default async function CloseDetailPage({ params }: { params: Promise<{ id
       <Link href="/app/closes" className="flex w-fit items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft aria-hidden className="size-4" />Back to reports</Link>
       <PageHeader
         title={`Report from ${formatDateTime(close.summary.created_at)}`}
-        description={`${close.summary.sales} payments were checked against the available authorization, cart, receipt, settlement, bank, duplicate-charge, and refund evidence.`}
+        description={`${close.summary.sales} payments`}
         action={<a href={download} className={cn(buttonVariants({ variant: "outline" }), "h-10 gap-2")}><Download aria-hidden className="size-4" />Download evidence</a>}
       />
       <section aria-label="Report summary" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -48,13 +48,12 @@ export default async function CloseDetailPage({ params }: { params: Promise<{ id
       <Panel className="flex flex-col gap-4 border-ok/20 bg-ok/[0.02] sm:flex-row sm:items-center sm:justify-between">
         <div className="flex gap-3">
           <ShieldCheck aria-hidden className="mt-0.5 size-5 shrink-0 text-ok" />
-          <div><p className="font-medium">Evidence verified independently</p><p className="mt-1 text-sm text-muted-foreground">The report verdicts come from Vera’s deterministic verifier. AI investigations explain the evidence but cannot override these results.</p></div>
+          <p className="font-medium">Evidence verified independently</p>
         </div>
         <span className="shrink-0 rounded-full bg-brand/10 px-2.5 py-1 text-xs font-medium text-brand">{investigations.size} of {payments.length} payments investigated by AI</span>
       </Panel>
       <Panel>
         <h2 className="font-semibold">Payment results</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Payments with issues appear first. Investigate with AI for a verified explanation, or open the complete check list.</p>
         <div className="mt-5 grid gap-4">
           {payments.map(([saleId, claims]) => {
             const issues = claims.filter((claim) => claim.status !== "PROVEN");

@@ -12,7 +12,7 @@ export function BankCsvImport() {
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   return <div className="grid gap-3">
-    <div className="rounded-lg bg-muted/60 p-3 text-xs leading-relaxed text-muted-foreground"><p className="font-medium text-foreground">Required CSV columns</p><p className="mt-1 font-mono">payment_id, bank_id, amount, date, narration, utr, intent_ref</p><p className="mt-2">Amount is in rupees. intent_ref is optional. Up to 200 rows and 1 MB are accepted; the original file is hashed and retained once.</p></div>
+    <div className="rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground"><p className="font-medium text-foreground">CSV columns</p><p className="mt-1 font-mono">payment_id, bank_id, amount, date, narration, utr, intent_ref</p><p className="mt-2">Rupees · 200 rows · 1 MB</p></div>
     <FileInput ref={input} required accept=".csv,text/csv" />
     <div className="flex flex-wrap items-center gap-3"><Button type="button" disabled={pending} onClick={async () => {
       const file = input.current?.files?.[0]; if (!file) return setMessage("Choose a CSV first."); if (file.size > 1_000_000) return setMessage("CSV must be 1 MB or smaller.");

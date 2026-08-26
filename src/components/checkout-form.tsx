@@ -57,7 +57,7 @@ export function CheckoutForm({ mode }: { mode: "test" | "live" }) {
           const done = await fetch("/api/v1/razorpay/checkout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...response, close: true }) });
           const data = (await done.json()) as { error?: string };
           if (!done.ok) return reject(new Error(data.error || "Payment verification failed."));
-          setStatus("Payment captured. Mandate, cart, receipt, and Razorpay capture are verified in the signed report.");
+          setStatus("Payment captured · signed report created");
           resolve();
         },
         modal: { ondismiss: () => reject(new Error("Checkout was dismissed before payment.")) },
@@ -69,7 +69,7 @@ export function CheckoutForm({ mode }: { mode: "test" | "live" }) {
 
   return <form className="grid gap-6" onSubmit={(event) => { event.preventDefault(); pay().catch((error) => setStatus(error instanceof Error ? error.message : "Payment failed.")).finally(() => setPending(false)); }}>
     <section className="grid gap-4">
-      <div><h3 className="font-semibold">Who is authorizing the agent?</h3><p className="mt-1 text-sm text-muted-foreground">Vera creates a real Ed25519 attestation before checkout. Use stable identifiers from your principal and agent integration.</p></div>
+      <h3 className="font-semibold">Authorization</h3>
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Principal DID"><Input required value={form.principalDid} onChange={set("principalDid")} /></Field>
         <Field label="Agent DID"><Input required value={form.agentDid} onChange={set("agentDid")} /></Field>
@@ -79,7 +79,7 @@ export function CheckoutForm({ mode }: { mode: "test" | "live" }) {
       </div>
     </section>
     <section className="grid gap-4 border-t border-border pt-6">
-      <div><h3 className="font-semibold">What is the merchant signing?</h3><p className="mt-1 text-sm text-muted-foreground">The exact line item and total are hashed and merchant-signed before Razorpay receives the order.</p></div>
+      <h3 className="font-semibold">Cart</h3>
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Merchant ID"><Input required value={form.merchantId} onChange={set("merchantId")} /></Field>
         <Field label="SKU"><Input required value={form.sku} onChange={set("sku")} /></Field>
@@ -87,8 +87,8 @@ export function CheckoutForm({ mode }: { mode: "test" | "live" }) {
         <Field label="Unit amount (₹)"><Input required type="number" min="1" step="0.01" value={form.unitAmount} onChange={set("unitAmount")} /></Field>
       </div>
     </section>
-    {mode === "live" ? <CheckboxField checked={confirmLive} onCheckedChange={setConfirmLive} label="I understand this opens live Razorpay Checkout and may charge real money." /> : null}
-    <div className="flex flex-wrap items-center gap-3"><Button type="submit" disabled={pending || (mode === "live" && !confirmLive)} className="h-10 w-fit px-4">{pending ? "Preparing proof…" : `Create verified ${mode === "live" ? "live " : ""}purchase`}</Button><p className="text-xs text-muted-foreground">Cart total: ₹{(Number(form.quantity || 0) * Number(form.unitAmount || 0)).toFixed(2)}</p></div>
+    {mode === "live" ? <CheckboxField checked={confirmLive} onCheckedChange={setConfirmLive} label="Confirm real payment" /> : null}
+    <div className="flex flex-wrap items-center gap-3"><Button type="submit" disabled={pending || (mode === "live" && !confirmLive)} className="h-10 w-fit px-4">{pending ? "Preparing…" : "Continue to Razorpay"}</Button><p className="text-sm font-medium">₹{(Number(form.quantity || 0) * Number(form.unitAmount || 0)).toFixed(2)}</p></div>
     {status ? <Notice>{status}</Notice> : null}
     {proof ? <Disclosure title="Pre-payment evidence fingerprints" className="rounded-xl border border-border p-4 text-xs"><dl className="grid gap-2 font-mono"><div><dt className="text-muted-foreground">Intent</dt><dd className="break-all">{proof.intentHash}</dd></div><div><dt className="text-muted-foreground">Cart</dt><dd className="break-all">{proof.cartHash}</dd></div></dl></Disclosure> : null}
   </form>;

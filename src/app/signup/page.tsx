@@ -19,9 +19,6 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
   return (
     <div className="mx-auto flex min-h-[70vh] w-full max-w-md flex-col justify-center px-5 py-16">
       <h1 className="font-display text-3xl font-semibold tracking-tight">Create an account</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Password must be 12–128 characters. Secrets never leave this server.
-      </p>
       <div className="mt-8">
         <AuthForm mode="signup" redirectTo={redirectTo} />
       </div>

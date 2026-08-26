@@ -14,7 +14,7 @@ export function IntegrationOperationsPanel({ operations }: { operations: Integra
   const failed = operations.deliveries.filter((item) => item.status === "failed");
   return <div className="grid gap-5">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><h3 className="font-semibold">Delivery operations</h3><p className="mt-1 text-sm text-muted-foreground">The background worker retries temporary failures automatically. Exhausted deliveries remain visible here.</p></div>
+      <h3 className="font-semibold">Delivery operations</h3>
       {failed.length ? <Button type="button" variant="outline" disabled={pending} onClick={async () => {
         setPending(true); setMessage(null);
         const provider = failed[0].provider;

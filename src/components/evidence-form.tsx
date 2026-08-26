@@ -53,7 +53,7 @@ export function EvidenceForm({ payments, kind }: { payments: PaymentOption[]; ki
       const response = await fetch("/api/v1/evidence", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
       const data = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(data.error || "Evidence import failed.");
-      setMessage("Evidence stored, hashed, checked, and included in a new signed report.");
+      setMessage("Evidence added · report updated");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Evidence import failed."); }
     finally { setPending(false); }
   }

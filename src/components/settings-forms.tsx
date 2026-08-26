@@ -47,7 +47,7 @@ export function SystemSettingsForm({ publicUrl, allowLive, maxIngestEvents }: { 
   }}>
     <Field label="Public URL"><Input type="url" placeholder="https://vera.example.com" value={url} onChange={(e) => setUrl(e.target.value)} /></Field>
     <Field label="Maximum stored events per account"><Input required type="number" min={1000} max={1000000} step={1000} value={capacity} onChange={(e) => setCapacity(e.target.value)} /></Field>
-    <CheckboxField checked={live} onCheckedChange={setLive} label="Allow Razorpay live keys" description="Test mode remains the default. Enable this only after TLS, backups, and webhook verification are in place." />
+    <CheckboxField checked={live} onCheckedChange={setLive} label="Allow Razorpay live keys" description="Requires TLS, backups, and verified webhooks." />
     <Button type="submit" className="h-10 w-fit px-4">Save installation settings</Button>
     {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
   </form>;
@@ -93,7 +93,7 @@ export function AiSettingsForm({ configured, initialProvider, initialModel, init
     </div>
     <Field label="Model"><Input required placeholder="Provider model ID" value={model} onChange={(e) => setModel(e.target.value)} /></Field>
     <Field label="Base URL"><Input type="url" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} /></Field>
-    <Field label={isConfigured ? "Replace API key (leave unchanged to keep current)" : "API key"}><Input type="password" value={apiKey} placeholder={isConfigured ? "••••••••••••••••" : undefined} onChange={(e) => setApiKey(e.target.value)} autoComplete="off" /></Field>
+    <Field label="API key"><Input type="password" value={apiKey} placeholder={isConfigured ? "••••••••••••••••" : undefined} onChange={(e) => setApiKey(e.target.value)} autoComplete="off" /></Field>
     <div className="flex gap-3"><Button type="submit" className="h-10 w-fit px-4">{isConfigured ? "Update AI settings" : "Connect AI"}</Button>{isConfigured ? <Button type="button" variant="outline" onClick={async () => { await fetch("/api/v1/settings", { method: "DELETE" }); location.reload(); }}>Disconnect</Button> : null}</div>
     {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
   </form>;
@@ -133,7 +133,7 @@ export function ApiKeyForm() {
       </Button>
       {secret ? (
         <p className="rounded-lg bg-muted p-3 font-mono text-xs break-all">
-          Copy now. Vera will not show this again.
+          Copy now — shown once.
           <br />
           {secret}
         </p>
@@ -176,13 +176,13 @@ export function RazorpayForm({ webhookUrl, configured, initialKeyId, hasWebhookS
       <Field label="Key ID (rzp_test_… or rzp_live_…)">
         <Input value={keyId} onChange={(e) => setKeyId(e.target.value)} autoComplete="off" />
       </Field>
-      <Field label={isConfigured ? "Replace key secret (leave unchanged to keep current)" : "Key secret"}>
+      <Field label="Key secret">
         <Input type="password" required={!isConfigured} value={keySecret} placeholder={isConfigured ? "••••••••••••••••" : undefined} onChange={(e) => setKeySecret(e.target.value)} autoComplete="new-password" />
       </Field>
-      <Field label={hasStoredWebhookSecret ? "Replace webhook secret (leave unchanged to keep current)" : "Webhook secret"}>
+      <Field label="Webhook secret">
         <Input type="password" value={webhookSecret} placeholder={hasStoredWebhookSecret ? "••••••••••••••••" : undefined} onChange={(e) => setWebhookSecret(e.target.value)} autoComplete="new-password" />
       </Field>
-      <p className="text-xs leading-relaxed text-muted-foreground">Use the same secret in Razorpay for the webhook URL below. Vera uses it to verify that incoming payment events genuinely came from Razorpay.</p>
+      <p className="text-xs text-muted-foreground">Must match the secret configured in Razorpay.</p>
       <p className="text-xs text-muted-foreground">
         Webhook URL: <span className="font-mono break-all">{webhookUrl}</span>
       </p>
