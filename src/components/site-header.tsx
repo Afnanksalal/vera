@@ -9,7 +9,6 @@ const links = [
   { href: "/#story", label: "What Vera does" },
   { href: "/#how", label: "How it works" },
   { href: "/#checks", label: "The checks" },
-  { href: "/docs", label: "Docs" },
 ];
 
 export function SiteHeader() {
@@ -18,7 +17,7 @@ export function SiteHeader() {
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5">
           <Image src="/art/vera-icon.png" alt="Vera" width={30} height={30} className="rounded-lg" />
-          <span className="font-display text-[20px] font-semibold tracking-tight">Vera</span>
+          <span className="hidden font-display text-[20px] font-semibold tracking-tight sm:inline">Vera</span>
         </Link>
         <nav className="marketing-links hidden items-center gap-1 md:flex">
           {links.map((link) => (
@@ -30,8 +29,12 @@ export function SiteHeader() {
               {link.label}
             </Link>
           ))}
+          <Link href="/docs" className="rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted">Docs</Link>
         </nav>
-        <AuthButtons />
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <Link href="/docs" className="rounded-md px-2.5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted md:hidden">Docs</Link>
+          <AuthButtons />
+        </div>
       </div>
     </header>
   );

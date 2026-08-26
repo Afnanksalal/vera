@@ -1,10 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { LICENSE_URL, REPOSITORY_URL } from "@/lib/site";
+import { SelfHostCta } from "@/components/self-host-cta";
 
 export function SiteFooter() {
   return (
     <footer className="mt-4 border-t border-border/80 bg-secondary/30">
+      <SelfHostCta />
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-5 py-12 sm:flex-row sm:items-start sm:justify-between sm:px-6">
         <div className="max-w-sm">
           <div className="flex items-center gap-2.5">

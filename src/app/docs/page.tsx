@@ -103,15 +103,23 @@ export default function DocsPage() {
       <p>Ingest requests accept at most 200 records and 1 MB. Monetary fields use integer paise. The complete route and payload contract is maintained in <a href={`${REPOSITORY_URL}/blob/main/docs/API.md`} className="font-medium text-brand hover:underline">API.md</a>.</p>
     </DocumentSection>
     <DocumentSection id="deploy" title="Self-hosting">
-      <p>Requirements: Docker with Compose, a persistent local volume, and an HTTPS reverse proxy.</p>
-      <Code>{`git clone ${REPOSITORY_URL}.git\ncd vera\ndocker compose up -d --build`}</Code>
+      <p>Vera ships as one application container with a named data volume. You need Git, Docker Engine with Compose, a host with persistent storage, and a domain routed through an HTTPS reverse proxy. No <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">.env</code> file is required.</p>
+      <h3 className="text-lg font-semibold text-foreground">Install and start</h3>
+      <Code>{`git clone ${REPOSITORY_URL}.git\ncd vera\ndocker compose up -d --build\ncurl http://127.0.0.1:43147/api/health`}</Code>
+      <p>The Compose stack binds Vera to loopback on port <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">43147</code>, stores the database and master key in the <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">vera-data</code> volume, runs as a non-root user, and includes a container health check and background worker.</p>
+      <h3 className="text-lg font-semibold text-foreground">Put Vera behind HTTPS</h3>
+      <p>For a host-installed Caddy server, replace the domain below with one whose DNS record points to the server:</p>
+      <Code>{`vera.example.com {\n  encode zstd gzip\n  reverse_proxy 127.0.0.1:43147\n}`}</Code>
       <DocumentList>
-        <li>proxy HTTPS traffic to <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">127.0.0.1:43147</code>;</li>
-        <li>persist the complete <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">/app/data</code> volume;</li>
-        <li>create the installation owner at <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">/signup</code>;</li>
-        <li>set the canonical HTTPS public URL in Settings;</li>
-        <li>run only one application process against each SQLite volume.</li>
+        <li>open the HTTPS domain and create the first installation owner at <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">/signup</code>;</li>
+        <li>set that exact HTTPS origin as the canonical public URL under Settings → Installation;</li>
+        <li>configure Razorpay, the AI investigator, backup passphrases, and integrations entirely in Settings;</li>
+        <li>keep the application port private and expose only the reverse proxy;</li>
+        <li>run only one Vera application process against each SQLite data volume.</li>
       </DocumentList>
+      <h3 className="text-lg font-semibold text-foreground">Upgrade</h3>
+      <Code>{`git pull --ff-only\ndocker compose build --pull\ndocker compose up -d\ndocker compose ps`}</Code>
+      <p>Create and verify an encrypted recovery backup in Settings before upgrading. The database and installation master key live together in the persistent volume and must be recovered together.</p>
       <p>See <a href={`${REPOSITORY_URL}/blob/main/docs/ARCHITECTURE.md`} className="font-medium text-brand hover:underline">Architecture</a> and <a href={`${REPOSITORY_URL}/blob/main/docs/SECURITY.md`} className="font-medium text-brand hover:underline">Security model</a> for trust boundaries.</p>
     </DocumentSection>
     <DocumentSection id="operations" title="Production operations">

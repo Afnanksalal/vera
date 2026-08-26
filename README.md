@@ -1,9 +1,3 @@
-<p align="center">
-  <a href="https://vera.18.61.174.6.sslip.io" aria-label="Open the Vera website">
-    <img src="https://vera.18.61.174.6.sslip.io/opengraph-image" width="960" alt="Vera, the audit and reconciliation layer for AI agent purchases" />
-  </a>
-</p>
-
 <h1 align="center">Vera</h1>
 
 <p align="center">
@@ -23,15 +17,6 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-2d8a6e" alt="MIT" />
-  <img src="https://img.shields.io/badge/typescript-5-2d8a6e" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/next.js-16-2d8a6e" alt="Next.js" />
-  <img src="https://img.shields.io/badge/money-integer%20paise-2d8a6e" alt="Integer paise" />
-  <img src="https://img.shields.io/badge/runtime-web%20only-2d8a6e" alt="Web-only runtime" />
-  <a href="https://vera.18.61.174.6.sslip.io"><img src="https://img.shields.io/badge/live-demo-009f6b" alt="Live demo" /></a>
-</p>
-
-<p align="center">
   <img src="public/art/vera-mascot.png" width="340" alt="Vera, a mint-green owl auditor holding a ledger and a magnifying glass" />
 </p>
 
@@ -44,10 +29,6 @@ Vera is operated entirely through its web console and HTTP integration API. It h
 ---
 
 ## Why this exists
-
-<p align="center">
-  <img src="public/art/vera-hero.png" width="720" alt="A shopping robot buying online while Vera inspects a chain of receipts, with green checks and one red flag" />
-</p>
 
 A bank statement cannot tell an agent apart from a person. Matching a payout to an order on amount and date can quietly accept an overspent mandate, a missing receipt, a retried double charge, or a lump that mixes several customers.
 
@@ -93,10 +74,6 @@ The container runs as a non-root user with a read-only root filesystem, a writab
 ---
 
 ## How it works
-
-<p align="center">
-  <img src="public/art/vera-pipeline.png" width="720" alt="A scribe robot writes a claim, a detective owl re-checks it, and a judge stamps it approved" />
-</p>
 
 | | Role | What it does |
 | --- | --- | --- |
