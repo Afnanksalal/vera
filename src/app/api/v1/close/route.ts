@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function POST() {
   return handle(async () => {
     await assertSameOriginIfCookie();
-    const user = await requireUser();
+    const user = await requireUser("operate");
     if (!rateLimit(`close:${user.id}`, 10, 60_000)) return Response.json({ error: "Close rate limit reached.", code: "rate_limited" }, { status: 429 });
     const close = closeUser(user.id);
     const notifications = await publishCloseNotifications(user.id, close);

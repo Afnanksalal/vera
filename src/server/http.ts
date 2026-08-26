@@ -1,7 +1,8 @@
 import { cookies, headers } from "next/headers";
 import { SESSION_COOKIE } from "./config";
 import { getDb } from "./db";
-import { sessionFromToken, userFromApiKey, type SessionInfo, type User } from "./auth";
+import { sessionFromToken, workspaceFromApiKey, type SessionInfo, type User } from "./auth";
+import { can, workspaceForUser, type WorkspaceAccess, type WorkspacePermission } from "./organizations";
 
 export class HttpError extends Error {
   constructor(
@@ -26,20 +27,41 @@ export async function readSessionToken(): Promise<string | undefined> {
 }
 
 export async function currentUser(): Promise<User | null> {
+  const context = await currentWorkspace();
+  return context ? { ...context.user, id: context.access.dataOwnerUserId } : null;
+}
+
+export type RequestWorkspace = { user: User; access: WorkspaceAccess; via: "session" | "api_key" };
+
+export async function currentWorkspace(): Promise<RequestWorkspace | null> {
   const hdrs = await headers();
   const key = bearer(hdrs.get("authorization"));
-  if (key) return userFromApiKey(key);
-  return sessionFromToken(await readSessionToken())?.user ?? null;
+  if (key) {
+    const resolved = workspaceFromApiKey(key);
+    return resolved ? { ...resolved, via: "api_key" } : null;
+  }
+  const session = sessionFromToken(await readSessionToken());
+  if (!session) return null;
+  const access = workspaceForUser(session.user.id, session.activeOrganizationId);
+  return access ? { user: session.user, access, via: "session" } : null;
 }
 
 export async function currentSession(): Promise<SessionInfo | null> {
   return sessionFromToken(await readSessionToken());
 }
 
-export async function requireUser(): Promise<User> {
-  const user = await currentUser();
-  if (!user) throw new HttpError(401, "Sign in or pass a Vera API key.", "unauthorized");
-  return user;
+export async function requireUser(permission: WorkspacePermission = "read"): Promise<User> {
+  const context = await currentWorkspace();
+  if (!context) throw new HttpError(401, "Sign in or pass a Vera API key.", "unauthorized");
+  if (!can(context.access.role, permission)) throw new HttpError(403, "Your organization role does not allow this action.", "forbidden");
+  return { ...context.user, id: context.access.dataOwnerUserId };
+}
+
+export async function requireWorkspace(permission: WorkspacePermission = "read"): Promise<RequestWorkspace> {
+  const context = await currentWorkspace();
+  if (!context) throw new HttpError(401, "Sign in or pass a Vera API key.", "unauthorized");
+  if (!can(context.access.role, permission)) throw new HttpError(403, "Your organization role does not allow this action.", "forbidden");
+  return context;
 }
 
 function originOf(value: string | null): string | null {

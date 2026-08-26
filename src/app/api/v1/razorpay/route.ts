@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   return handle(async () => {
-    const user = await requireUser();
+    const user = await requireUser("manage_integrations");
     if (!rateLimit(`razorpay-settings:${user.id}`, 10, 60_000)) return Response.json({ error: "Razorpay settings rate limit reached.", code: "rate_limited" }, { status: 429 });
     return Response.json(razorpayPublic(user.id));
   });
@@ -17,7 +17,7 @@ export async function GET() {
 export async function PUT(req: Request) {
   return handle(async () => {
     await assertSameOriginIfCookie();
-    const user = await requireUser();
+    const user = await requireUser("manage_integrations");
     if (!rateLimit(`razorpay-settings:${user.id}`, 10, 60_000)) return Response.json({ error: "Razorpay settings rate limit reached.", code: "rate_limited" }, { status: 429 });
     const body = (await readJson(req, MAX_INGEST_BYTES)) as {
       key_id?: string;
@@ -37,7 +37,7 @@ export async function PUT(req: Request) {
 export async function DELETE() {
   return handle(async () => {
     await assertSameOriginIfCookie();
-    const user = await requireUser();
+    const user = await requireUser("manage_integrations");
     if (!rateLimit(`razorpay-settings:${user.id}`, 10, 60_000)) return Response.json({ error: "Razorpay settings rate limit reached.", code: "rate_limited" }, { status: 429 });
     deleteRazorpayAccount(user.id);
     return Response.json({ ok: true });

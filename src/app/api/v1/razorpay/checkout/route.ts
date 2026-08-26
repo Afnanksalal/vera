@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   return handle(async () => {
     await assertSameOriginIfCookie();
-    const user = await requireUser();
+    const user = await requireUser("operate");
     if (!rateLimit(`razorpay-checkout:${user.id}`, 20, 60_000)) return Response.json({ error: "Checkout rate limit reached.", code: "rate_limited" }, { status: 429 });
     const body = (await readJson(req, 8_192)) as {
       razorpay_order_id?: string;

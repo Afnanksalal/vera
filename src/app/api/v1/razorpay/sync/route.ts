@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   return handle(async () => {
     await assertSameOriginIfCookie();
-    const user = await requireUser();
+    const user = await requireUser("operate");
     if (!rateLimit(`razorpay-sync:${user.id}`, 5, 60_000)) {
       return Response.json({ error: "Sync rate limit reached.", code: "rate_limited" }, { status: 429 });
     }

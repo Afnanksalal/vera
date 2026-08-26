@@ -1,5 +1,5 @@
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
-import { authSecret } from "./config";
+import { exportMasterKeyMaterial } from "./config";
 import { getDb, nowMs } from "./db";
 import { randomId, sha256Hex } from "./crypto";
 import { HttpError } from "./http";
@@ -35,7 +35,7 @@ export function createEncryptedBackup(userId: string, rawPassphrase: unknown): {
     format: "vera-recovery-payload",
     version: 1,
     database: database.toString("base64"),
-    master_key: authSecret(),
+    master_key: exportMasterKeyMaterial(),
     database_sha256: sha256Hex(database),
   }));
   const salt = randomBytes(16);

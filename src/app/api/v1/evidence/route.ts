@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   return handle(async () => {
     await assertSameOriginIfCookie();
-    const user = await requireUser();
+    const user = await requireUser("operate");
     if (!rateLimit(`evidence:${user.id}`, 30, 60_000)) return Response.json({ error: "Evidence import rate limit reached.", code: "rate_limited" }, { status: 429 });
     const result = attachExternalEvidence(user.id, await readJson(req, 1_600_000));
     const close = closeUser(user.id);

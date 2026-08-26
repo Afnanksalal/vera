@@ -2,6 +2,7 @@ import { API_KEY_PREFIX, SESSION_COOKIE, SESSION_TTL_MS } from "./config";
 import { getDb, nowMs } from "./db";
 import { hashPassword, randomId, randomToken, tokenHash, verifyPassword } from "./crypto";
 import { clientIp, emailOk, normalizeEmail, passwordOk } from "./policy";
+import { createPersonalOrganization, personalOrganizationId, workspaceForUser, type WorkspaceAccess } from "./organizations";
 
 export type User = {
   id: string;
@@ -12,6 +13,7 @@ export type User = {
 export type SessionInfo = {
   user: User;
   sessionId: string;
+  activeOrganizationId: string | null;
 };
 
 export type SessionContext = {
@@ -84,6 +86,7 @@ export function createUser(emailRaw: string, password: string): User {
       user.created_at,
       role
     );
+    createPersonalOrganization(user.id, user.email, db);
     return user;
   }).immediate();
 }
@@ -108,7 +111,7 @@ export function createSession(userId: string, context: SessionContext = { client
   db.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(now);
   const active = db.prepare("SELECT id FROM sessions WHERE user_id = ? ORDER BY created_at DESC").all(userId) as { id: string }[];
   for (const stale of active.slice(19)) db.prepare("DELETE FROM sessions WHERE id = ? AND user_id = ?").run(stale.id, userId);
-  db.prepare("INSERT INTO sessions (id, user_id, token_hash, expires_at, created_at, client_label, ip_hint, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(
+  db.prepare("INSERT INTO sessions (id, user_id, token_hash, expires_at, created_at, client_label, ip_hint, last_seen_at, active_organization_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
     randomId("ses"),
     userId,
     tokenHash(token),
@@ -116,7 +119,8 @@ export function createSession(userId: string, context: SessionContext = { client
     now,
     context.clientLabel.slice(0, 100),
     context.ipHint.slice(0, 64),
-    now
+    now,
+    workspaceForUser(userId)?.organizationId ?? personalOrganizationId(userId)
   );
   return token;
 }
@@ -126,12 +130,12 @@ export function sessionFromToken(token: string | undefined | null): SessionInfo 
   const now = nowMs();
   const row = getDb()
     .prepare(
-      `SELECT sessions.id as session_id, sessions.last_seen_at, users.id as user_id, users.email, users.created_at
+      `SELECT sessions.id as session_id, sessions.last_seen_at, sessions.active_organization_id, users.id as user_id, users.email, users.created_at
        FROM sessions JOIN users ON users.id = sessions.user_id
        WHERE sessions.token_hash = ? AND sessions.expires_at > ?`
     )
     .get(tokenHash(token), now) as
-    | { session_id: string; last_seen_at: number | null; user_id: string; email: string; created_at: number }
+    | { session_id: string; last_seen_at: number | null; active_organization_id: string | null; user_id: string; email: string; created_at: number }
     | undefined;
   if (!row) return null;
   if (!row.last_seen_at || now - row.last_seen_at >= 5 * 60_000) {
@@ -139,6 +143,7 @@ export function sessionFromToken(token: string | undefined | null): SessionInfo 
   }
   return {
     sessionId: row.session_id,
+    activeOrganizationId: row.active_organization_id,
     user: { id: row.user_id, email: row.email, created_at: row.created_at },
   };
 }
@@ -219,7 +224,7 @@ export function clearSessionCookie(secure: boolean): { name: string; value: stri
   };
 }
 
-export function createApiKey(userId: string, name: string): { id: string; prefix: string; secret: string } {
+export function createApiKey(userId: string, name: string, organizationId?: string): { id: string; prefix: string; secret: string } {
   const count = getDb().prepare("SELECT COUNT(*) AS n FROM api_keys WHERE user_id = ?").get(userId) as { n: number };
   if (count.n >= 50) throw Object.assign(new Error("Revoke an integration key before creating another."), { code: "api_key_limit" });
   const label = name.trim();
@@ -228,8 +233,8 @@ export function createApiKey(userId: string, name: string): { id: string; prefix
   const prefix = secret.slice(0, 12);
   const id = randomId("key");
   getDb()
-    .prepare("INSERT INTO api_keys (id, user_id, name, prefix, key_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-    .run(id, userId, label, prefix, tokenHash(secret), nowMs());
+    .prepare("INSERT INTO api_keys (id, user_id, name, prefix, key_hash, created_at, organization_id) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .run(id, userId, label, prefix, tokenHash(secret), nowMs(), organizationId ?? personalOrganizationId(userId));
   return { id, prefix, secret };
 }
 
@@ -256,6 +261,20 @@ export function userFromApiKey(raw: string | undefined | null): User | null {
   if (!row) return null;
   getDb().prepare("UPDATE api_keys SET last_used_at = ? WHERE id = ?").run(nowMs(), row.key_id);
   return { id: row.id, email: row.email, created_at: row.created_at };
+}
+
+export function workspaceFromApiKey(raw: string | undefined | null): { user: User; access: WorkspaceAccess } | null {
+  if (!raw || !raw.startsWith(API_KEY_PREFIX) || raw.length < 20) return null;
+  const row = getDb().prepare(
+    `SELECT users.id, users.email, users.created_at, api_keys.id AS key_id,
+            o.id AS organization_id, o.name AS organization_name, o.data_owner_user_id
+     FROM api_keys JOIN users ON users.id = api_keys.user_id
+     JOIN organizations o ON o.id = api_keys.organization_id
+     WHERE api_keys.key_hash = ?`
+  ).get(tokenHash(raw)) as { id: string; email: string; created_at: number; key_id: string; organization_id: string; organization_name: string; data_owner_user_id: string } | undefined;
+  if (!row) return null;
+  getDb().prepare("UPDATE api_keys SET last_used_at = ? WHERE id = ?").run(nowMs(), row.key_id);
+  return { user: { id: row.id, email: row.email, created_at: row.created_at }, access: { organizationId: row.organization_id, organizationName: row.organization_name, dataOwnerUserId: row.data_owner_user_id, role: "integration" } };
 }
 
 export function isOwner(userId: string): boolean {

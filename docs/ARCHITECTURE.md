@@ -70,7 +70,7 @@ Money is stored as integer paise. Protocol adapters preserve absence: a missing 
 
 The web-managed purchase path creates evidence before money moves. Vera generates encrypted workspace principal and merchant Ed25519 identities, signs the mandate and exact canonical cart, persists both artifacts, and only then creates the Razorpay order. The order carries the purchase ID and intent/cart hashes. On verified capture Vera fetches the payment from Razorpay, binds it to the stored artifacts, creates a merchant-signed receipt, and immediately closes the workspace.
 
-Settlement and bank proof remain asynchronous. Official Razorpay reconciliation records retain processor provenance and UTR. Other processor reports and bank statements are uploaded with the selected row; bulk bank CSV imports validate up to 200 tenant-scoped payment rows and retain the source file once. Vera stores the original bytes, computes the SHA-256 digest server-side, and includes both the artifact and digest in the signed audit bundle. Test-mode purchases never synthesize settlement or bank movement.
+Settlement and bank proof remain asynchronous. Official Razorpay reconciliation records retain processor provenance and UTR. A scheduled RazorpayX feed imports real account transactions, deduplicates provider event IDs, and attaches a bank credit only when settlement net, date window, and reference yield one unique candidate. Ambiguous credits remain unmatched. Other processor reports and bank statements can be uploaded; bulk bank CSV imports validate up to 200 tenant-scoped payment rows and retain the source file once. Vera stores original provider payloads or uploaded bytes, computes SHA-256 digests server-side, and includes matched evidence in the signed audit bundle. Test-mode purchases never synthesize settlement or bank movement.
 
 ```mermaid
 flowchart LR
@@ -151,7 +151,8 @@ Each installation generates one Ed25519 audit identity. Its private key is encry
 ```mermaid
 flowchart LR
   OWNER[Installation owner] --> SETTINGS["Installation settings"]
-  MEMBER[Member accounts] --> WORKSPACE["Isolated workspace settings"]
+  ACCOUNT[Accounts] --> MEMBERSHIP["Organization memberships + roles"]
+  MEMBERSHIP --> WORKSPACE["Shared organization ledger"]
   SETTINGS --> VALIDATE[Server-side validation]
   WORKSPACE --> VALIDATE
   VALIDATE --> ENC[Envelope encryption]
@@ -168,11 +169,11 @@ The database and master key form one backup unit. Settings exports them as a pas
 | Boundary | Control |
 | --- | --- |
 | Browser session | HttpOnly, SameSite cookies; HTTPS-aware Secure flag; CSRF origin enforcement |
-| Account roles | First account is the installation owner; later accounts are isolated members; owner-only checks protect global settings |
-| Integration API | Hashed bearer API keys scoped to a workspace |
+| Account roles | Installation owner plus organization owner, admin, operator, auditor, and viewer roles enforced server-side |
+| Integration API | Hashed bearer API keys scoped to one organization |
 | Razorpay webhook | Per-workspace HMAC verification before ingestion |
 | Stored provider credentials | Encrypted with the installation master key |
-| Workspace data | Every query and mutation is scoped by authenticated user id |
+| Workspace data | Every query and mutation resolves through the active organization and its data owner |
 | Model output | Proposal only; deterministic replay and verification before mutation |
 | Evidence bundle | Canonical hashes, event-chain verification, replay, signature, and trusted signer match |
 

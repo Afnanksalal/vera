@@ -434,6 +434,96 @@ const MIGRATIONS: { version: number; sql: string }[] = [
         ON webhook_events(status, next_attempt_at, created_at);
     `,
   },
+  {
+    version: 10,
+    sql: `
+      CREATE TABLE IF NOT EXISTS organizations (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        data_owner_user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        created_by TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS organization_memberships (
+        organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'operator', 'auditor', 'viewer')),
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY (organization_id, user_id)
+      );
+      CREATE INDEX IF NOT EXISTS organization_memberships_user
+        ON organization_memberships(user_id, created_at);
+      CREATE TABLE IF NOT EXISTS organization_invitations (
+        id TEXT PRIMARY KEY,
+        organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        email TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('admin', 'operator', 'auditor', 'viewer')),
+        token_hash TEXT NOT NULL UNIQUE,
+        invited_by TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        expires_at INTEGER NOT NULL,
+        accepted_at INTEGER,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS organization_invitations_org
+        ON organization_invitations(organization_id, created_at DESC);
+      CREATE TABLE IF NOT EXISTS organization_audit_log (
+        id TEXT PRIMARY KEY,
+        organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        actor_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+        action TEXT NOT NULL,
+        detail TEXT,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS organization_audit_log_org
+        ON organization_audit_log(organization_id, created_at DESC);
+      ALTER TABLE sessions ADD COLUMN active_organization_id TEXT;
+      ALTER TABLE api_keys ADD COLUMN organization_id TEXT;
+      INSERT INTO organizations (id, name, data_owner_user_id, created_by, created_at, updated_at)
+        SELECT 'org_' || substr(id, 5), substr(email, 1, instr(email, '@') - 1) || '''s workspace', id, id, created_at, created_at
+        FROM users;
+      INSERT INTO organization_memberships (organization_id, user_id, role, created_at)
+        SELECT 'org_' || substr(id, 5), id, 'owner', created_at FROM users;
+      UPDATE sessions SET active_organization_id = 'org_' || substr(user_id, 5);
+      UPDATE api_keys SET organization_id = 'org_' || substr(user_id, 5);
+      CREATE INDEX IF NOT EXISTS api_keys_organization ON api_keys(organization_id, created_at DESC);
+    `,
+  },
+  {
+    version: 11,
+    sql: `
+      CREATE TABLE IF NOT EXISTS bank_feed_connections (
+        user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        provider TEXT NOT NULL CHECK (provider = 'razorpayx'),
+        account_number_cipher TEXT NOT NULL,
+        account_number_last4 TEXT NOT NULL,
+        enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+        sync_interval_minutes INTEGER NOT NULL DEFAULT 60 CHECK (sync_interval_minutes BETWEEN 15 AND 1440),
+        last_cursor_at INTEGER,
+        last_synced_at INTEGER,
+        last_error TEXT,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS bank_feed_events (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        provider TEXT NOT NULL CHECK (provider = 'razorpayx'),
+        provider_event_id TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        payload_hash TEXT NOT NULL,
+        matched_payment_id TEXT,
+        created_at INTEGER NOT NULL,
+        UNIQUE(user_id, provider, provider_event_id)
+      );
+      CREATE INDEX IF NOT EXISTS bank_feed_events_user
+        ON bank_feed_events(user_id, created_at DESC);
+      CREATE TABLE IF NOT EXISTS worker_heartbeats (
+        name TEXT PRIMARY KEY,
+        last_seen_at INTEGER NOT NULL,
+        detail TEXT
+      );
+    `,
+  },
 ];
 
 let singleton: Database.Database | undefined;

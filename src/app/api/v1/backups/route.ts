@@ -1,13 +1,15 @@
 import { isOwner } from "@/server/auth";
 import { backupHistory, createEncryptedBackup, verifyEncryptedBackup } from "@/server/backups";
-import { assertSameOriginIfCookie, handle, HttpError, readJson, requireUser } from "@/server/http";
+import { assertSameOriginIfCookie, currentSession, handle, HttpError, readJson } from "@/server/http";
 import { rateLimit } from "@/server/policy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 async function owner() {
-  const user = await requireUser();
+  const session = await currentSession();
+  if (!session) throw new HttpError(401, "Sign in to manage backups.", "unauthorized");
+  const user = session.user;
   if (!isOwner(user.id)) throw new HttpError(403, "Only the installation owner can manage backups.", "forbidden");
   return user;
 }

@@ -20,6 +20,9 @@ Cookie-authenticated mutations require a same-origin `Origin` or `Referer`. Bear
 | `POST` | `/api/v1/evidence` | Attach a processor report or bank statement and re-close |
 | `POST` | `/api/v1/evidence/bank-csv` | Validate and attach up to 200 bank rows from one CSV source |
 | `GET` | `/api/v1/operations` | Read tenant-scoped delivery, audit, queue, and integrity status |
+| `GET` | `/api/v1/metrics` | Authenticated Prometheus metrics for queues, worker, backups, reviews, and storage |
+| `GET`/`POST`/`DELETE` | `/api/v1/bank-feed` | Inspect, configure, sync, or disconnect a RazorpayX transaction feed |
+| `GET`/`POST` | `/api/v1/organizations` | List/switch organizations and manage invitations, members, roles, and audit history |
 | `POST` | `/api/v1/close` | Close all current workspace records |
 | `GET` | `/api/v1/ledger` | Latest close and claim grid |
 | `GET` | `/api/v1/closes` | Close history; add `latest=1` for latest details |
@@ -36,6 +39,7 @@ Cookie-authenticated mutations require a same-origin `Origin` or `Referer`. Bear
 | `GET`/`PUT` | `/api/v1/razorpay` | Inspect or connect Razorpay |
 | `POST` | `/api/v1/razorpay/sync` | Import captured payments |
 | `POST` | `/api/webhooks/razorpay/:userId` | Signature-verified Razorpay webhook |
+| `POST` | `/api/v1/security/rotate-key` | Owner-only, password-confirmed master-key rotation after verified backup |
 
 Ingest requests accept at most 200 records and 1 MB per request. Account storage defaults to 100,000 events and the installation owner can set 1,000–1,000,000 from Settings. Monetary fields are integer paise.
 

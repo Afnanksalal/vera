@@ -14,20 +14,25 @@ import { signingIdentity } from "./signing";
 import { analyzeUser } from "./analysis";
 import { calibrationRows, importCalibration } from "./calibration";
 import { enqueueRazorpayWebhook } from "./webhooks";
-import { mergeRazorpayRecord, settlementFromRazorpayRecon } from "./razorpay";
+import { mergeRazorpayRecord, saveRazorpayAccount, settlementFromRazorpayRecon } from "./razorpay";
 import { latestInvestigations, saveInvestigation } from "./investigations";
 import { buildDashboardAnalytics } from "./dashboard";
 import { attachExternalEvidence, importBankStatementCsv } from "./evidence";
 import { createEncryptedBackup, verifyEncryptedBackup } from "./backups";
+import { acceptInvitation, can, inviteMember, organizationMembers, organizationsForUser, updateMemberRole, workspaceForUser } from "./organizations";
 import { sha256 } from "@/mandate/canonical";
 import { parseVerifiedPurchaseInput } from "./purchases";
 import { chatCommand, chatIntegrationPublic, enqueueReportNotifications, normalizeWebhookUrl, saveChatIntegration, verifySlackRequest } from "./chat-integrations";
+import { resetTestMasterKeyring } from "./config";
+import { rotateMasterKey } from "./security";
+import { bankFeedPublic, saveBankFeed } from "./bank-feed";
 
 process.env.VERA_TEST = "1";
 
 afterEach(() => {
   resetDb();
   resetRateLimit();
+  resetTestMasterKeyring();
 });
 
 test("password hash verifies and rejects wrong secrets", () => {
@@ -401,6 +406,57 @@ test("encrypted recovery backups round-trip and reject the wrong passphrase", ()
   assert.ok(verified.database_bytes > 0);
   assert.equal(verified.database_sha256.length, 64);
   assert.throws(() => verifyEncryptedBackup(user.id, "the-wrong-passphrase-123", backup.bytes.toString("base64")));
+});
+
+test("organization invitations share one workspace with granular server roles", () => {
+  const owner = createUser("org-owner@example.com", "super-secret-12");
+  const member = createUser("org-member@example.com", "super-secret-12");
+  const access = workspaceForUser(owner.id)!;
+  const invitation = inviteMember(access, owner.id, member.email, "auditor");
+  const joined = acceptInvitation(member.id, member.email, invitation.token);
+  assert.equal(joined, access.organizationId);
+  assert.equal(organizationsForUser(member.id).length, 2);
+  assert.equal(workspaceForUser(member.id, joined)?.dataOwnerUserId, owner.id);
+  assert.equal(can("auditor", "review"), true);
+  assert.equal(can("auditor", "operate"), false);
+  updateMemberRole(access, owner.id, member.id, "operator");
+  assert.equal(organizationMembers(access.organizationId).find((row) => row.id === member.id)?.role, "operator");
+});
+
+test("organization invitations are email-bound and owner membership cannot be demoted", () => {
+  const owner = createUser("bound-owner@example.com", "super-secret-12");
+  const other = createUser("other@example.com", "super-secret-12");
+  const access = workspaceForUser(owner.id)!;
+  const invitation = inviteMember(access, owner.id, "expected@example.com", "viewer");
+  assert.throws(() => acceptInvitation(other.id, other.email, invitation.token));
+  assert.throws(() => updateMemberRole(access, owner.id, owner.id, "viewer"));
+});
+
+test("RazorpayX bank-feed account numbers are encrypted and blank updates preserve them", () => {
+  const user = createUser("bank-feed@example.com", "super-secret-12");
+  saveRazorpayAccount(user.id, { key_id: "rzp_test_123456", key_secret: "razorpay-test-secret-123" });
+  saveBankFeed(user.id, { account_number: "7878780080316316", sync_interval_minutes: 60 });
+  const before = getDb().prepare("SELECT account_number_cipher FROM bank_feed_connections WHERE user_id=?").get(user.id) as { account_number_cipher: string };
+  assert.notEqual(before.account_number_cipher, "7878780080316316");
+  saveBankFeed(user.id, { account_number: "", sync_interval_minutes: 360 });
+  const after = getDb().prepare("SELECT account_number_cipher FROM bank_feed_connections WHERE user_id=?").get(user.id) as { account_number_cipher: string };
+  assert.equal(after.account_number_cipher, before.account_number_cipher);
+  assert.deepEqual(bankFeedPublic(user.id), { configured: true, enabled: true, account_last4: "6316", sync_interval_minutes: 360, last_synced_at: null, last_error: null });
+});
+
+test("master-key rotation re-encrypts secrets and revokes sessions, keys, and pending invitations", () => {
+  const owner = createUser("rotation-owner@example.com", "super-secret-12");
+  const session = createSession(owner.id); createApiKey(owner.id, "worker");
+  saveAiSettings(owner.id, { provider: "anthropic", model: "claude-test", base_url: "https://api.anthropic.com", api_key: "anthropic-secret-key" });
+  const invite = inviteMember(workspaceForUser(owner.id)!, owner.id, "future@example.com", "viewer");
+  const backup = createEncryptedBackup(owner.id, "a-strong-backup-passphrase");
+  verifyEncryptedBackup(owner.id, "a-strong-backup-passphrase", backup.bytes.toString("base64"));
+  const before = (getDb().prepare("SELECT api_key_cipher FROM ai_settings WHERE user_id=?").get(owner.id) as { api_key_cipher: string }).api_key_cipher;
+  const result = rotateMasterKey(owner.id);
+  const after = (getDb().prepare("SELECT api_key_cipher FROM ai_settings WHERE user_id=?").get(owner.id) as { api_key_cipher: string }).api_key_cipher;
+  assert.notEqual(after, before); assert.equal(decryptSecret(after), "anthropic-secret-key");
+  assert.equal(result.sessions_revoked, 1); assert.equal(result.api_keys_revoked, 1); assert.equal(sessionFromToken(session), null);
+  assert.throws(() => acceptInvitation(createUser("future@example.com", "super-secret-12").id, "future@example.com", invite.token));
 });
 
 test("calibration replacement does not silently append stale labels", () => {

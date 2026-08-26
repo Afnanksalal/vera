@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   return handle(async () => {
-    const user = await requireUser();
+    const user = await requireUser("manage_integrations");
     return Response.json({ keys: listApiKeys(user.id) });
   });
 }
@@ -15,7 +15,7 @@ export async function GET() {
 export async function POST(req: Request) {
   return handle(async () => {
     await assertSameOriginIfCookie();
-    const user = await requireUser();
+    const user = await requireUser("manage_integrations");
     if (!rateLimit(`api-key:${user.id}`, 10, 60_000)) return Response.json({ error: "API-key rate limit reached.", code: "rate_limited" }, { status: 429 });
     const body = (await readJson(req, 4_096)) as { name?: string };
     let key;

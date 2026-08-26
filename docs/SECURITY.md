@@ -22,7 +22,7 @@ The installation owner can create a portable recovery backup in Settings. Vera c
 
 Session cookies are `HttpOnly`, `SameSite=Lax`, and marked `Secure` when the request arrives through HTTPS. Cookie-authenticated mutations enforce same-origin requests. API-key requests use bearer authentication.
 
-Account registration remains available after initialization. The first account receives the single installation-owner role; later accounts are members. Workspace records, credentials, API keys, sessions, reviews, and webhooks are scoped by authenticated user ID. Only the owner can change installation-wide settings such as the canonical URL, storage limit, and live-payment opt-in.
+Account registration remains available after initialization. Every account receives a private organization; owners and admins can issue seven-day, email-bound invitation links to shared organizations. Organization roles are owner, admin, operator, auditor, and viewer. Read, operate, review, integration-management, and member-management permissions are enforced in server routes. The first account also receives the single installation-owner role for global settings.
 
 ## Razorpay
 
@@ -32,6 +32,11 @@ Account registration remains available after initialization. The first account r
 - Checkout signatures are verified and payments are fetched again from Razorpay; browser-supplied amounts are not trusted.
 - Mandate and cart attestations are persisted before the Razorpay order is created and later bound by order ID and immutable hashes.
 - Test mode never fabricates settlement or bank evidence.
+- RazorpayX account numbers are encrypted. Imported transactions are deduplicated and only uniquely matched credits become bank evidence.
+
+## Master-key rotation
+
+The installation owner must create and verify an encrypted recovery backup within 24 hours before rotation. Vera stages a new key while retaining the old key for crash recovery, re-encrypts every provider, signing, chat, and bank-feed secret in one database transaction, revokes sessions, API keys, and pending invitation tokens, and only then removes the old key. Follow the exact operator checklist in [OPERATIONS.md](OPERATIONS.md).
 
 ## Ledger integrity
 

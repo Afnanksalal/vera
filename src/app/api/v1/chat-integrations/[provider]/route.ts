@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function PUT(req: Request, ctx: RouteContext<"/api/v1/chat-integrations/[provider]">) {
   return handle(async () => {
     await assertSameOriginIfCookie();
-    const user = await requireUser();
+    const user = await requireUser("manage_integrations");
     if (!rateLimit(`chat-settings:${user.id}`, 20, 60_000)) return Response.json({ error: "Integration settings rate limit reached.", code: "rate_limited" }, { status: 429 });
     const { provider } = await ctx.params;
     const body = (await readJson(req, 16_384)) as {
@@ -28,7 +28,7 @@ export async function PUT(req: Request, ctx: RouteContext<"/api/v1/chat-integrat
 export async function POST(req: Request, ctx: RouteContext<"/api/v1/chat-integrations/[provider]">) {
   return handle(async () => {
     await assertSameOriginIfCookie();
-    const user = await requireUser();
+    const user = await requireUser("manage_integrations");
     if (!rateLimit(`chat-test:${user.id}`, 5, 60_000)) return Response.json({ error: "Test delivery rate limit reached.", code: "rate_limited" }, { status: 429 });
     const { provider } = await ctx.params;
     const kind = validateChatProvider(provider);
@@ -52,7 +52,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/v1/chat-integra
 export async function DELETE(_req: Request, ctx: RouteContext<"/api/v1/chat-integrations/[provider]">) {
   return handle(async () => {
     await assertSameOriginIfCookie();
-    const user = await requireUser();
+    const user = await requireUser("manage_integrations");
     if (!rateLimit(`chat-settings:${user.id}`, 20, 60_000)) return Response.json({ error: "Integration settings rate limit reached.", code: "rate_limited" }, { status: 429 });
     const { provider } = await ctx.params;
     deleteChatIntegration(user.id, validateChatProvider(provider));

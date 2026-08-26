@@ -7,7 +7,7 @@ import {
   scryptSync,
   timingSafeEqual,
 } from "node:crypto";
-import { authSecret } from "./config";
+import { authSecret, masterKeyring } from "./config";
 
 const SCRYPT_N = 16384;
 const SCRYPT_R = 8;
@@ -67,32 +67,37 @@ export function verifyPassword(password: string, stored: string): boolean {
   return timingSafeEqual(actual, expected);
 }
 
-function envelopeKey(): Buffer {
-  return scryptSync(authSecret(), "vera-envelope-v1", KEY_LEN, {
+function envelopeKey(secret = authSecret()): Buffer {
+  return scryptSync(secret, "vera-envelope-v1", KEY_LEN, {
     N: 16384,
     r: 8,
     p: 1,
   });
 }
 
-/** AES-256-GCM. Output: v1:iv:tag:ciphertext (all base64url). */
+/** AES-256-GCM. Output: v2:key-id:iv:tag:ciphertext (binary fields base64url). */
 export function encryptSecret(plaintext: string): string {
+  const active = masterKeyring().active;
   const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", envelopeKey(), iv);
+  const cipher = createCipheriv("aes-256-gcm", envelopeKey(active.secret), iv);
   const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
-  return ["v1", iv.toString("base64url"), tag.toString("base64url"), encrypted.toString("base64url")].join(":");
+  return ["v2", active.id, iv.toString("base64url"), tag.toString("base64url"), encrypted.toString("base64url")].join(":");
 }
 
 export function decryptSecret(payload: string): string {
   const parts = payload.split(":");
-  if (parts.length !== 4 || parts[0] !== "v1") throw new Error("invalid secret envelope");
-  const iv = Buffer.from(parts[1], "base64url");
-  const tag = Buffer.from(parts[2], "base64url");
-  const data = Buffer.from(parts[3], "base64url");
-  const decipher = createDecipheriv("aes-256-gcm", envelopeKey(), iv);
-  decipher.setAuthTag(tag);
-  return Buffer.concat([decipher.update(data), decipher.final()]).toString("utf8");
+  const ring = masterKeyring();
+  const candidates = parts[0] === "v2" && parts.length === 5 ? [...[ring.active, ...ring.previous].filter((item) => item.id === parts[1])] : parts[0] === "v1" && parts.length === 4 ? [ring.active, ...ring.previous] : [];
+  const offset = parts[0] === "v2" ? 2 : 1;
+  for (const candidate of candidates) {
+    try {
+      const decipher = createDecipheriv("aes-256-gcm", envelopeKey(candidate.secret), Buffer.from(parts[offset], "base64url"));
+      decipher.setAuthTag(Buffer.from(parts[offset + 1], "base64url"));
+      return Buffer.concat([decipher.update(Buffer.from(parts[offset + 2], "base64url")), decipher.final()]).toString("utf8");
+    } catch { /* try the retained key during a crash-safe rotation */ }
+  }
+  throw new Error("invalid secret envelope");
 }
 
 export function hmacSha256Hex(secret: string, body: string): string {

@@ -84,7 +84,7 @@ export function deleteRazorpayAccount(userId: string): void {
   getDb().prepare("DELETE FROM razorpay_accounts WHERE user_id = ?").run(userId);
 }
 
-function credentials(userId: string): { key_id: string; key_secret: string; webhook_secret: string | null } {
+export function razorpayCredentials(userId: string): { key_id: string; key_secret: string; webhook_secret: string | null } {
   const row = getDb()
     .prepare("SELECT key_id, key_secret_cipher, webhook_secret_cipher FROM razorpay_accounts WHERE user_id = ?")
     .get(userId) as { key_id: string; key_secret_cipher: string; webhook_secret_cipher: string | null } | undefined;
@@ -97,12 +97,12 @@ function credentials(userId: string): { key_id: string; key_secret: string; webh
 }
 
 function clientFor(userId: string): InstanceType<typeof Razorpay> {
-  const creds = credentials(userId);
+  const creds = razorpayCredentials(userId);
   return new Razorpay({ key_id: creds.key_id, key_secret: creds.key_secret });
 }
 
 export function verifyWebhookSignature(userId: string, rawBody: string, signature: string | null): void {
-  const secret = credentials(userId).webhook_secret;
+  const secret = razorpayCredentials(userId).webhook_secret;
   if (!secret) throw new HttpError(400, "No webhook secret stored for this account.", "no_webhook_secret");
   if (!signature) throw new HttpError(401, "Missing X-Razorpay-Signature.", "bad_signature");
   if (!timingSafeEqualHex(hmacSha256Hex(secret, rawBody), signature)) {
@@ -111,7 +111,7 @@ export function verifyWebhookSignature(userId: string, rawBody: string, signatur
 }
 
 export function verifyCheckoutSignature(userId: string, orderId: string, paymentId: string, signature: string): void {
-  if (!timingSafeEqualHex(hmacSha256Hex(credentials(userId).key_secret, `${orderId}|${paymentId}`), signature)) {
+  if (!timingSafeEqualHex(hmacSha256Hex(razorpayCredentials(userId).key_secret, `${orderId}|${paymentId}`), signature)) {
     throw new HttpError(401, "Invalid Razorpay checkout signature.", "bad_signature");
   }
 }
@@ -128,7 +128,7 @@ export async function createRazorpayOrder(
   if (noteEntries.length > 15 || noteEntries.some(([key, value]) => !key || key.length > 64 || typeof value !== "string" || value.length > 256)) {
     throw new HttpError(400, "Order notes contain too many or invalid fields.", "invalid_notes");
   }
-  const creds = credentials(userId);
+  const creds = razorpayCredentials(userId);
   const order = await clientFor(userId).orders.create({
     amount: amountPaise,
     currency: "INR",

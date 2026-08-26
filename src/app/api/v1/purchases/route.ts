@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   return handle(async () => {
-    const user = await requireUser();
+    const user = await requireUser("read");
     return Response.json({ purchases: listVerifiedPurchases(user.id) });
   });
 }
@@ -15,7 +15,7 @@ export async function GET() {
 export async function POST(req: Request) {
   return handle(async () => {
     await assertSameOriginIfCookie();
-    const user = await requireUser();
+    const user = await requireUser("operate");
     if (!rateLimit(`verified-purchase:${user.id}`, 20, 60_000)) {
       return Response.json({ error: "Verified purchase rate limit reached.", code: "rate_limited" }, { status: 429 });
     }

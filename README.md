@@ -57,15 +57,16 @@ npm run build
 npm start
 ```
 
-Open `http://127.0.0.1:43147/signup`. Registration remains available for additional isolated accounts; the first account is the installation owner and controls installation-wide settings. In Settings:
+Open `http://127.0.0.1:43147/signup`. Registration remains available; every account starts with a private organization and can join shared organizations through email-bound invitations. The first account is also the installation owner and controls installation-wide settings. In Settings:
 
 1. Set the canonical public URL used for webhook delivery and origin enforcement.
 2. Connect Razorpay test credentials and a webhook secret.
 3. Sync captured payments and the selected month’s official settlement recon.
 4. Create a verified purchase: Vera persists and Ed25519-signs the mandate and exact cart before creating the Razorpay order.
-5. Attach the original processor report and bank statement when settlement evidence arrives.
-6. Optionally connect Anthropic or an OpenAI-compatible model.
-7. Enable live Razorpay keys only after deploying behind HTTPS and configuring backups.
+5. Connect a RazorpayX account feed for scheduled bank-credit ingestion, or attach the original bank statement when a direct feed is unavailable.
+6. Connect Anthropic or an OpenAI-compatible model for the investigator; deterministic verification still controls every committed outcome.
+7. Invite teammates with owner, admin, operator, auditor, or viewer access.
+8. Enable live Razorpay keys only after deploying behind HTTPS and configuring backups.
 
 Vera creates these files in `data/` on first use:
 
@@ -80,7 +81,7 @@ Back up both files together. Never copy one without the other. Mount the entire 
 docker compose up -d --build
 ```
 
-The container runs as a non-root user with a read-only root filesystem, a writable `/tmp`, an HTTP health check, and a named volume at `/app/data`. Put port `43147` behind your HTTPS reverse proxy, create the first (owner) account, and set the canonical public URL in Settings. Additional users can create their own isolated accounts from the same web UI.
+The container runs as a non-root user with a read-only root filesystem, a writable `/tmp`, an HTTP health check, a persistent background outbox/bank-feed worker, and a named volume at `/app/data`. Put port `43147` behind your HTTPS reverse proxy, create the first owner account, and set the canonical public URL in Settings. Do not run multiple replicas against the same SQLite volume.
 
 ---
 
@@ -138,7 +139,7 @@ All money is integer paise. Floating-point amounts never enter the canonical led
 - `/app/closes`: close history, audit-bundle download, trusted verification, and installation public-key export.
 - `/app/pay`: pre-payment mandate and cart signing followed by Razorpay Checkout.
 - `/app/evidence`: processor-report attachment, single bank-credit evidence, and validated bulk bank CSV import with server-computed file hashes.
-- `/app/settings`: installation health, encrypted recovery backups, AI, Slack, Discord, integration API-key, and Razorpay configuration.
+- `/app/settings`: organizations and RBAC, Razorpay/RazorpayX, AI, Slack, Discord, integration delivery audit, API keys, installation health, encrypted recovery backups, and master-key rotation.
 
 There are no seeded or fixture-backed runtime pages. Fixtures remain test-only and never enter the product database.
 
@@ -159,7 +160,10 @@ npm test
 npm run lint
 npm run build
 npm run test:http
+npm run test:e2e
 ```
+
+CI runs unit, HTTP-contract, production-build, container-build, and Chromium browser tests. Runtime metrics are exposed in Prometheus text format at authenticated `/api/v1/metrics`.
 
 Synthetic fixtures, answer keys, and conformal calibration datasets exist only in the automated test suite. Production analysis always starts from records belonging to the authenticated workspace.
 
