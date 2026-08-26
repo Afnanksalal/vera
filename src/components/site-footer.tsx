@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { REPOSITORY_URL } from "@/lib/site";
+import { LICENSE_URL, REPOSITORY_URL } from "@/lib/site";
 
 export function SiteFooter() {
   return (
@@ -16,7 +16,7 @@ export function SiteFooter() {
             and keeps a signed record anyone can re-check.
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-10 text-sm">
+        <div className="grid grid-cols-2 gap-10 text-sm sm:grid-cols-3">
           <div className="flex flex-col gap-2">
             <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
               Product
@@ -27,28 +27,30 @@ export function SiteFooter() {
             <Link href="/#how" className="text-muted-foreground hover:text-foreground">
               How it works
             </Link>
-            <Link href="/app/settings" className="text-muted-foreground hover:text-foreground">Settings</Link>
             <a href={REPOSITORY_URL} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground">
-              Source on GitHub
+              GitHub
             </a>
           </div>
           <div className="flex flex-col gap-2">
             <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              Trust
+              Resources
             </span>
-            <Link href="/app/closes" className="text-muted-foreground hover:text-foreground">
-              Signed reports
-            </Link>
-            <Link href="/app/settings" className="text-muted-foreground hover:text-foreground">
-              Installation settings
-            </Link>
+            <Link href="/docs" className="text-muted-foreground hover:text-foreground">Documentation</Link>
+            <Link href="/security" className="text-muted-foreground hover:text-foreground">Security</Link>
+            <a href={`${REPOSITORY_URL}/blob/main/docs/API.md`} className="text-muted-foreground hover:text-foreground">API reference</a>
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Legal</span>
+            <Link href="/terms" className="text-muted-foreground hover:text-foreground">Terms</Link>
+            <Link href="/privacy" className="text-muted-foreground hover:text-foreground">Privacy</Link>
+            <a href={LICENSE_URL} className="text-muted-foreground hover:text-foreground">MIT License</a>
           </div>
         </div>
       </div>
       <div className="border-t border-border/80">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-5 py-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>AP2, ACP, and x402 payments normalized into one signed, replayable ledger.</p>
-          <a href={REPOSITORY_URL} target="_blank" rel="noreferrer" className="w-fit hover:text-foreground hover:underline">Open-source on GitHub</a>
+          <p>© {new Date().getFullYear()} Vera contributors. Open-source under MIT.</p>
+          <div className="flex gap-4"><Link href="/terms" className="hover:text-foreground hover:underline">Terms</Link><Link href="/privacy" className="hover:text-foreground hover:underline">Privacy</Link><Link href="/security" className="hover:text-foreground hover:underline">Security</Link></div>
         </div>
       </div>
     </footer>

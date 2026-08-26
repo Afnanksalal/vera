@@ -9,6 +9,7 @@ const links = [
   { href: "/#story", label: "What Vera does" },
   { href: "/#how", label: "How it works" },
   { href: "/#checks", label: "The checks" },
+  { href: "/docs", label: "Docs" },
 ];
 
 export function SiteHeader() {

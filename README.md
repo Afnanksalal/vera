@@ -16,6 +16,13 @@
 </p>
 
 <p align="center">
+  <a href="https://vera.18.61.174.6.sslip.io/docs">Documentation</a> ·
+  <a href="https://vera.18.61.174.6.sslip.io/security">Security</a> ·
+  <a href="https://vera.18.61.174.6.sslip.io/privacy">Privacy</a> ·
+  <a href="https://vera.18.61.174.6.sslip.io/terms">Terms</a>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/license-MIT-2d8a6e" alt="MIT" />
   <img src="https://img.shields.io/badge/typescript-5-2d8a6e" alt="TypeScript" />
   <img src="https://img.shields.io/badge/next.js-16-2d8a6e" alt="Next.js" />

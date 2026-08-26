@@ -22,6 +22,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
       <div className="mt-8">
         <AuthForm mode="signup" redirectTo={redirectTo} />
       </div>
+      <p className="mt-4 text-center text-xs leading-5 text-muted-foreground">By creating an account, you agree to the <Link href="/terms" className="font-medium text-foreground hover:underline">Terms</Link> and acknowledge the <Link href="/privacy" className="font-medium text-foreground hover:underline">Privacy Policy</Link>.</p>
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account? <Link className="font-medium text-foreground underline-offset-4 hover:underline" href={`/login?next=${encodeURIComponent(redirectTo)}`}>Sign in</Link>
       </p>

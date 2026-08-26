@@ -91,7 +91,7 @@
   body:has([data-console-shell]) .console-home-link {
     display: none !important;
   }
-  body:not(:has([data-landing-page])) .marketing-links {
+  body:not(:has([data-landing-page], [data-public-page])) .marketing-links {
     display: none !important;
   }
 

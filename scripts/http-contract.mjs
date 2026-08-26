@@ -67,6 +67,13 @@ try {
   assert.equal(freshHealth.initialized, false);
   await expectStatus("fresh login page", "/login", 200);
   await expectStatus("fresh signup page", "/signup", 200);
+  for (const [path, marker] of [["/docs", "Operate Vera"], ["/privacy", "Privacy Policy"], ["/security", "Security at Vera"], ["/terms", "Terms of Service"]]) {
+    const page = await expectStatus(`public page ${path}`, path, 200);
+    assert.match(await page.text(), new RegExp(marker));
+  }
+  const sitemap = await expectStatus("public sitemap", "/sitemap.xml", 200);
+  const sitemapBody = await sitemap.text();
+  for (const path of ["/docs", "/privacy", "/security", "/terms"]) assert.match(sitemapBody, new RegExp(path));
 
   await expectStatus("login before setup", "/api/auth/login", 409, {
     method: "POST",
