@@ -43,6 +43,7 @@ next-env.d.ts
 
 /agent-tools
 /mandate-data
+/artifacts/
 /data/*
 !/data/.gitkeep
 

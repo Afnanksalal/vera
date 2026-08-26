@@ -3,6 +3,7 @@ import { assertSameOriginIfCookie, handle, readJson, requireUser } from "@/serve
 import { ingestPaymentId, verifyCheckoutSignature } from "@/server/razorpay";
 import { rateLimit } from "@/server/policy";
 import { attachVerifiedPurchaseEvidence } from "@/server/purchases";
+import { publishCloseNotifications } from "@/server/chat-integrations";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
     const evidence = attachVerifiedPurchaseEvidence(user.id, orderId, paymentId);
     const changed = ingest.inserted + ingest.updated + (evidence?.inserted ?? 0) + (evidence?.updated ?? 0);
     const close = body.close === false || changed === 0 ? null : closeUser(user.id);
-    return Response.json({ ingest, evidence, close });
+    const notifications = close ? await publishCloseNotifications(user.id, close) : null;
+    return Response.json({ ingest, evidence, close, notifications });
   });
 }

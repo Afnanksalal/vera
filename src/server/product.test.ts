@@ -3,6 +3,7 @@ import { afterEach, test } from "node:test";
 import { createUser, authenticate, createSession, sessionFromToken, createApiKey, userFromApiKey, changePassword, destroyAllSessions, destroyOtherSessions, destroySessionById, isOwner, listSessions, sessionContext } from "./auth";
 import { getDb, resetDb } from "./db";
 import { decryptSecret, encryptSecret, hashPassword, hmacSha256Hex, timingSafeEqualHex, verifyPassword } from "./crypto";
+import { createHmac } from "node:crypto";
 import { ingestRecords, closeUser, latestClose, listReviews, acknowledgeReview } from "./ledger";
 import { EXAMPLE_RECORDS } from "@/mandate/examples";
 import { paymentToRecord } from "./razorpay-map";
@@ -19,6 +20,7 @@ import { buildDashboardAnalytics } from "./dashboard";
 import { attachExternalEvidence } from "./evidence";
 import { sha256 } from "@/mandate/canonical";
 import { parseVerifiedPurchaseInput } from "./purchases";
+import { chatCommand, chatIntegrationPublic, enqueueReportNotifications, normalizeWebhookUrl, saveChatIntegration, verifySlackRequest } from "./chat-integrations";
 
 process.env.VERA_TEST = "1";
 
@@ -108,6 +110,59 @@ test("AI settings update preserves the encrypted key when replacement is blank",
   const after = getDb().prepare("SELECT api_key_cipher FROM ai_settings WHERE user_id = ?").get(user.id) as { api_key_cipher: string };
   assert.equal(after.api_key_cipher, before.api_key_cipher);
   assert.equal(aiSettingsPublic(user.id).model, "model-2");
+});
+
+test("Slack and Discord integrations encrypt webhook credentials and preserve blank replacements", () => {
+  const user = createUser("chat@example.com", "super-secret-12");
+  saveChatIntegration(user.id, "slack", {
+    webhook_url: "https://hooks.slack.com/services/T000/B000/secret-token",
+    signing_secret: "slack-signing-secret-123",
+    notify_reports: true,
+    notify_issues: true,
+  });
+  const before = getDb().prepare("SELECT webhook_url_cipher, signing_secret_cipher FROM chat_integrations WHERE user_id = ? AND provider = 'slack'").get(user.id) as { webhook_url_cipher: string; signing_secret_cipher: string };
+  assert.notEqual(before.webhook_url_cipher, "https://hooks.slack.com/services/T000/B000/secret-token");
+  saveChatIntegration(user.id, "slack", { webhook_url: "", signing_secret: "", enabled: false, notify_reports: true, notify_issues: false });
+  const after = getDb().prepare("SELECT webhook_url_cipher, signing_secret_cipher FROM chat_integrations WHERE user_id = ? AND provider = 'slack'").get(user.id) as { webhook_url_cipher: string; signing_secret_cipher: string };
+  assert.deepEqual(after, before);
+  assert.deepEqual(chatIntegrationPublic(user.id, "slack"), {
+    provider: "slack", configured: true, enabled: false, commands_configured: true,
+    notify_reports: true, notify_issues: false, destination: "Slack incoming webhook",
+    pending: 0, failed: 0, last_delivery_at: null,
+  });
+});
+
+test("chat webhook URL validation blocks SSRF destinations", () => {
+  assert.equal(normalizeWebhookUrl("discord", "https://discord.com/api/webhooks/123/token"), "https://discord.com/api/webhooks/123/token");
+  assert.throws(() => normalizeWebhookUrl("slack", "http://hooks.slack.com/services/T/B/C"));
+  assert.throws(() => normalizeWebhookUrl("discord", "https://127.0.0.1/api/webhooks/123/token"));
+  assert.throws(() => normalizeWebhookUrl("slack", "https://hooks.slack.com.evil.example/services/T/B/C"));
+});
+
+test("Slack command requests require a fresh valid signature", () => {
+  const user = createUser("slack@example.com", "super-secret-12");
+  const secret = "slack-signing-secret-123";
+  saveChatIntegration(user.id, "slack", { webhook_url: "https://hooks.slack.com/services/T/B/token", signing_secret: secret });
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const body = "command=%2Fvera&text=issues";
+  const signature = `v0=${createHmac("sha256", secret).update(`v0:${timestamp}:${body}`).digest("hex")}`;
+  assert.equal(verifySlackRequest(user.id, timestamp, body, signature), true);
+  assert.equal(verifySlackRequest(user.id, timestamp, body + "x", signature), false);
+  assert.equal(verifySlackRequest(user.id, "1", body, signature), false);
+});
+
+test("chat commands and queued report notifications remain tenant scoped and idempotent", () => {
+  const first = createUser("first-chat@example.com", "super-secret-12");
+  const second = createUser("second-chat@example.com", "super-secret-12");
+  ingestRecords(first.id, "test", EXAMPLE_RECORDS);
+  const close = closeUser(first.id);
+  saveChatIntegration(first.id, "discord", { webhook_url: "https://discord.com/api/webhooks/123/token" });
+  assert.equal(enqueueReportNotifications(first.id, close), 1);
+  assert.equal(enqueueReportNotifications(first.id, close), 0);
+  assert.match(chatCommand(first.id, "issues"), /open evidence issue/);
+  assert.equal(chatCommand(second.id, `payment ${EXAMPLE_RECORDS[0].payment.id}`), "That payment was not found in this Vera workspace.");
+  assert.equal((getDb().prepare("SELECT COUNT(*) AS n FROM notification_deliveries WHERE user_id = ?").get(first.id) as { n: number }).n, 1);
+  assert.equal((getDb().prepare("SELECT COUNT(*) AS n FROM notification_deliveries WHERE user_id = ?").get(second.id) as { n: number }).n, 0);
 });
 
 test("AI investigations are persisted per user, report, and payment", () => {

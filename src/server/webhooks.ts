@@ -3,6 +3,7 @@ import { randomId } from "./crypto";
 import { getDb, nowMs } from "./db";
 import { ingestRazorpayPayment, parseWebhookPayment } from "./razorpay";
 import { attachVerifiedPurchaseEvidence } from "./purchases";
+import { publishCloseNotifications } from "./chat-integrations";
 
 type WebhookRow = {
   id: string;
@@ -78,7 +79,10 @@ export async function processPendingRazorpayWebhooks(userId?: string, limit = 20
       const evidence = (payment.status === "captured" || payment.captured === true) && payment.order_id
         ? attachVerifiedPurchaseEvidence(row.user_id, payment.order_id, payment.id)
         : null;
-      if (ingest.inserted + ingest.updated + (evidence?.inserted ?? 0) + (evidence?.updated ?? 0) > 0) closeUser(row.user_id);
+      if (ingest.inserted + ingest.updated + (evidence?.inserted ?? 0) + (evidence?.updated ?? 0) > 0) {
+        const close = closeUser(row.user_id);
+        await publishCloseNotifications(row.user_id, close);
+      }
       getDb().prepare("UPDATE webhook_events SET status = 'processed', processed_at = ? WHERE id = ?").run(nowMs(), row.id);
       processed += 1;
     } catch (error) {

@@ -204,6 +204,49 @@ CREATE TABLE IF NOT EXISTS evidence_artifacts (
 
 CREATE INDEX IF NOT EXISTS evidence_artifacts_payment
   ON evidence_artifacts(user_id, payment_id, kind, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS chat_integrations (
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL CHECK (provider IN ('slack', 'discord')),
+  enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+  webhook_url_cipher TEXT NOT NULL,
+  signing_secret_cipher TEXT,
+  command_public_key TEXT,
+  notify_reports INTEGER NOT NULL DEFAULT 1 CHECK (notify_reports IN (0, 1)),
+  notify_issues INTEGER NOT NULL DEFAULT 1 CHECK (notify_issues IN (0, 1)),
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, provider)
+);
+
+CREATE TABLE IF NOT EXISTS notification_deliveries (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL CHECK (provider IN ('slack', 'discord')),
+  event_key TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'processing', 'delivered', 'failed')),
+  attempts INTEGER NOT NULL DEFAULT 0,
+  next_attempt_at INTEGER NOT NULL,
+  last_error TEXT,
+  created_at INTEGER NOT NULL,
+  delivered_at INTEGER,
+  UNIQUE(user_id, provider, event_key)
+);
+
+CREATE INDEX IF NOT EXISTS notification_deliveries_pending
+  ON notification_deliveries(user_id, status, next_attempt_at, created_at);
+
+CREATE TABLE IF NOT EXISTS integration_audit_log (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL CHECK (provider IN ('slack', 'discord')),
+  action TEXT NOT NULL,
+  detail TEXT,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS integration_audit_log_user
+  ON integration_audit_log(user_id, created_at DESC);
 `;
 
 const MIGRATIONS: { version: number; sql: string }[] = [
@@ -307,6 +350,49 @@ const MIGRATIONS: { version: number; sql: string }[] = [
       );
       CREATE INDEX IF NOT EXISTS evidence_artifacts_payment
         ON evidence_artifacts(user_id, payment_id, kind, created_at DESC);
+    `,
+  },
+  {
+    version: 7,
+    sql: `
+      CREATE TABLE IF NOT EXISTS chat_integrations (
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        provider TEXT NOT NULL CHECK (provider IN ('slack', 'discord')),
+        enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+        webhook_url_cipher TEXT NOT NULL,
+        signing_secret_cipher TEXT,
+        command_public_key TEXT,
+        notify_reports INTEGER NOT NULL DEFAULT 1 CHECK (notify_reports IN (0, 1)),
+        notify_issues INTEGER NOT NULL DEFAULT 1 CHECK (notify_issues IN (0, 1)),
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (user_id, provider)
+      );
+      CREATE TABLE IF NOT EXISTS notification_deliveries (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        provider TEXT NOT NULL CHECK (provider IN ('slack', 'discord')),
+        event_key TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('pending', 'processing', 'delivered', 'failed')),
+        attempts INTEGER NOT NULL DEFAULT 0,
+        next_attempt_at INTEGER NOT NULL,
+        last_error TEXT,
+        created_at INTEGER NOT NULL,
+        delivered_at INTEGER,
+        UNIQUE(user_id, provider, event_key)
+      );
+      CREATE INDEX IF NOT EXISTS notification_deliveries_pending
+        ON notification_deliveries(user_id, status, next_attempt_at, created_at);
+      CREATE TABLE IF NOT EXISTS integration_audit_log (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        provider TEXT NOT NULL CHECK (provider IN ('slack', 'discord')),
+        action TEXT NOT NULL,
+        detail TEXT,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS integration_audit_log_user
+        ON integration_audit_log(user_id, created_at DESC);
     `,
   },
 ];
