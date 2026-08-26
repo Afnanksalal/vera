@@ -17,7 +17,8 @@ import { enqueueRazorpayWebhook } from "./webhooks";
 import { mergeRazorpayRecord, settlementFromRazorpayRecon } from "./razorpay";
 import { latestInvestigations, saveInvestigation } from "./investigations";
 import { buildDashboardAnalytics } from "./dashboard";
-import { attachExternalEvidence } from "./evidence";
+import { attachExternalEvidence, importBankStatementCsv } from "./evidence";
+import { createEncryptedBackup, verifyEncryptedBackup } from "./backups";
 import { sha256 } from "@/mandate/canonical";
 import { parseVerifiedPurchaseInput } from "./purchases";
 import { chatCommand, chatIntegrationPublic, enqueueReportNotifications, normalizeWebhookUrl, saveChatIntegration, verifySlackRequest } from "./chat-integrations";
@@ -129,6 +130,7 @@ test("Slack and Discord integrations encrypt webhook credentials and preserve bl
     provider: "slack", configured: true, enabled: false, commands_configured: true,
     notify_reports: true, notify_issues: false, destination: "Slack incoming webhook",
     pending: 0, failed: 0, last_delivery_at: null,
+    application_id: null, commands_registered_at: null,
   });
 });
 
@@ -377,6 +379,28 @@ test("Razorpay webhook event ids are durably deduplicated", () => {
   assert.equal(first.duplicate, false);
   assert.equal(second.duplicate, true);
   assert.equal(first.id, second.id);
+});
+
+test("bulk bank CSV validates rows, preserves the source once, and updates matching payments", () => {
+  const user = createUser("bank-csv@example.com", "super-secret-12");
+  const record = structuredClone(EXAMPLE_RECORDS[0]);
+  record.payment.id = "pay_bank_csv";
+  ingestRecords(user.id, "test", [record]);
+  const csv = "payment_id,bank_id,amount,date,narration,utr,intent_ref\npay_bank_csv,bank_42,99.50,2026-08-20,RAZORPAY SETTLEMENT,UTR-42,";
+  const result = importBankStatementCsv(user.id, { file_name: "bank.csv", mime_type: "text/csv", file_base64: Buffer.from(csv).toString("base64") });
+  assert.equal(result.rows, 1);
+  assert.equal((getDb().prepare("SELECT COUNT(*) AS n FROM evidence_artifacts WHERE user_id = ? AND kind = 'bank_statement'").get(user.id) as { n: number }).n, 1);
+  assert.equal((JSON.parse((getDb().prepare("SELECT payload_json FROM ingest_events WHERE user_id = ? AND external_id = ?").get(user.id, "pay_bank_csv") as { payload_json: string }).payload_json) as { bank: { amount_minor: number } }).bank.amount_minor, 9950);
+});
+
+test("encrypted recovery backups round-trip and reject the wrong passphrase", () => {
+  const user = createUser("backup@example.com", "super-secret-12");
+  ingestRecords(user.id, "test", [EXAMPLE_RECORDS[0]]);
+  const backup = createEncryptedBackup(user.id, "a-strong-backup-passphrase");
+  const verified = verifyEncryptedBackup(user.id, "a-strong-backup-passphrase", backup.bytes.toString("base64"));
+  assert.ok(verified.database_bytes > 0);
+  assert.equal(verified.database_sha256.length, 64);
+  assert.throws(() => verifyEncryptedBackup(user.id, "the-wrong-passphrase-123", backup.bytes.toString("base64")));
 });
 
 test("calibration replacement does not silently append stale labels", () => {

@@ -9,7 +9,7 @@ On first use Vera atomically creates `data/.master_key` with restrictive filesys
 - Encryption of the installation's persistent Ed25519 private signing key.
 - Encryption of workspace principal and merchant Ed25519 keys used by the web-managed verified-purchase flow.
 
-Back up `data/.master_key` and `data/vera.db` together. Anyone who obtains both can decrypt integration credentials. Losing the master key makes encrypted credentials unrecoverable.
+The installation owner can create a portable recovery backup in Settings. Vera checkpoints SQLite, packages the database and installation key, encrypts the package with AES-256-GCM using a passphrase-derived scrypt key, and records creation and verification in an audit log. Vera never stores the passphrase. Keep the backup and passphrase separately. Anyone who obtains both can decrypt integration credentials. Losing both the installation key and every recovery backup makes encrypted credentials unrecoverable.
 
 ## Network deployment
 
@@ -41,4 +41,4 @@ Version 2 bundles embed attached source files and bind their SHA-256 hashes, the
 
 ## Operational limits
 
-SQLite is appropriate for a single self-hosted Vera instance with a persistent volume. Do not run multiple application replicas against the same SQLite file over a network filesystem. Back up using SQLite-aware snapshots and test restoration regularly.
+SQLite is appropriate for a single self-hosted Vera instance with a persistent volume. Do not run multiple application replicas against the same SQLite file over a network filesystem. Use the encrypted backup control in Settings and verify every backup before relying on it. Recovery intentionally remains an offline operator action so a compromised browser session cannot replace the live installation database.

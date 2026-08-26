@@ -42,16 +42,17 @@ function claimNextRazorpayWebhook(userId?: string): WebhookRow | null {
        WHERE provider = 'razorpay'
          AND status IN ('pending', 'failed')
          AND attempts < 5
+         AND COALESCE(next_attempt_at, created_at) <= ?
          AND (? IS NULL OR user_id = ?)
        ORDER BY created_at ASC
        LIMIT 1`
-    ).get(userId ?? null, userId ?? null) as WebhookRow | undefined;
+    ).get(nowMs(), userId ?? null, userId ?? null) as WebhookRow | undefined;
     if (!row) return null;
     const claimed = db.prepare(
       `UPDATE webhook_events
-       SET status = 'processing', attempts = attempts + 1, last_error = NULL
+       SET status = 'processing', attempts = attempts + 1, last_error = NULL, locked_at = ?
        WHERE id = ? AND status IN ('pending', 'failed')`
-    ).run(row.id);
+    ).run(nowMs(), row.id);
     return claimed.changes === 1 ? { ...row, status: "processing" as const, attempts: row.attempts + 1 } : null;
   })();
 }
@@ -60,7 +61,12 @@ export async function processPendingRazorpayWebhooks(userId?: string, limit = 20
   processed: number;
   ignored: number;
   failed: number;
+  recovered: number;
 }> {
+  const recovered = getDb().prepare(
+    `UPDATE webhook_events SET status = 'failed', last_error = 'Recovered after interrupted processing.', next_attempt_at = ?, locked_at = NULL
+     WHERE status = 'processing' AND locked_at IS NOT NULL AND locked_at < ?`
+  ).run(nowMs(), nowMs() - 5 * 60_000).changes;
   let processed = 0;
   let ignored = 0;
   let failed = 0;
@@ -71,7 +77,7 @@ export async function processPendingRazorpayWebhooks(userId?: string, limit = 20
     try {
       const payment = parseWebhookPayment(JSON.parse(row.payload_json));
       if (!payment) {
-        getDb().prepare("UPDATE webhook_events SET status = 'ignored', processed_at = ? WHERE id = ?").run(nowMs(), row.id);
+        getDb().prepare("UPDATE webhook_events SET status = 'ignored', processed_at = ?, locked_at = NULL WHERE id = ?").run(nowMs(), row.id);
         ignored += 1;
         continue;
       }
@@ -83,15 +89,16 @@ export async function processPendingRazorpayWebhooks(userId?: string, limit = 20
         const close = closeUser(row.user_id);
         await publishCloseNotifications(row.user_id, close);
       }
-      getDb().prepare("UPDATE webhook_events SET status = 'processed', processed_at = ? WHERE id = ?").run(nowMs(), row.id);
+      getDb().prepare("UPDATE webhook_events SET status = 'processed', processed_at = ?, locked_at = NULL WHERE id = ?").run(nowMs(), row.id);
       processed += 1;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Webhook processing failed";
-      getDb().prepare("UPDATE webhook_events SET status = 'failed', last_error = ? WHERE id = ?").run(message.slice(0, 1000), row.id);
+      const delay = Math.min(3_600_000, 30_000 * 2 ** Math.max(0, row.attempts - 1));
+      getDb().prepare("UPDATE webhook_events SET status = 'failed', last_error = ?, next_attempt_at = ?, locked_at = NULL WHERE id = ?").run(message.slice(0, 1000), nowMs() + delay, row.id);
       failed += 1;
     }
   }
-  return { processed, ignored, failed };
+  return { processed, ignored, failed, recovered };
 }
 
 export function webhookQueueStatus(userId: string): { pending: number; failed: number } {

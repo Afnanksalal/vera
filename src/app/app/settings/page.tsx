@@ -8,6 +8,11 @@ import { aiSettingsPublic, getSystemSettings } from "@/server/settings";
 import { webhookQueueStatus } from "@/server/webhooks";
 import { ChatIntegrationForm } from "@/components/chat-integration-form";
 import { chatIntegrationPublic, commandEndpoint } from "@/server/chat-integrations";
+import { integrationOperations } from "@/server/chat-integrations";
+import { IntegrationOperationsPanel } from "@/components/integration-operations";
+import { BackupManager } from "@/components/backup-manager";
+import { backupHistory } from "@/server/backups";
+import { operationalStatus } from "@/server/operations";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +28,9 @@ export default async function SettingsPage() {
   const owner = isOwner(user.id);
   const slack = chatIntegrationPublic(user.id, "slack");
   const discord = chatIntegrationPublic(user.id, "discord");
+  const operations = integrationOperations(user.id);
+  const backups = owner ? backupHistory(user.id) : [];
+  const status = owner ? operationalStatus(user.id) : null;
   return <div className="grid gap-8">
     <PageHeader title="Settings" description="Connect payment data, manage integrations, and secure your account." />
     <nav aria-label="Settings sections" className="flex flex-wrap gap-2 text-sm">{[["#razorpay","Payments"],["#ai","AI"],["#chat","Chat"],["#integrations","API keys"],["#account","Account"],...(owner ? [["#installation","Installation"]] : [])].map(([href,label]) => <a key={href} href={href} className="rounded-full border border-border px-3 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">{label}</a>)}</nav>
@@ -31,13 +39,13 @@ export default async function SettingsPage() {
 
     <Panel id="ai"><div className="mb-6"><h2 className="text-lg font-semibold">AI investigator</h2><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Connect Vera’s investigation engine to explain payment issues and propose reconciliation findings. Every AI suggestion is independently checked against the stored evidence.</p></div><AiSettingsForm configured={ai.configured} initialProvider={ai.provider} initialModel={ai.model} initialBaseUrl={ai.base_url}/></Panel>
 
-    <Panel id="chat"><div className="mb-6"><h2 className="text-lg font-semibold">Slack and Discord</h2><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Send verified report alerts where your team works and expose read-only, signed commands. Vera shares counts and report links, never credentials or evidence files.</p></div><div className="grid gap-4"><ChatIntegrationForm integration={slack} commandUrl={commandEndpoint(user.id, "slack")}/><ChatIntegrationForm integration={discord} commandUrl={commandEndpoint(user.id, "discord")}/></div></Panel>
+    <Panel id="chat"><div className="mb-6"><h2 className="text-lg font-semibold">Slack and Discord</h2><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Send verified report alerts where your team works and expose read-only, signed commands. Vera shares counts and report links, never credentials or evidence files.</p></div><div className="grid gap-4"><ChatIntegrationForm integration={slack} commandUrl={commandEndpoint(user.id, "slack")}/><ChatIntegrationForm integration={discord} commandUrl={commandEndpoint(user.id, "discord")}/></div><div className="mt-6 border-t border-border pt-6"><IntegrationOperationsPanel operations={operations}/></div></Panel>
 
     <Panel id="integrations"><div className="mb-6"><h2 className="text-lg font-semibold">Integration keys</h2><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Create keys for services that send payment and mandate records to Vera.</p></div><ApiKeyForm />{keys.length ? <ul className="mt-5 grid gap-2">{keys.map((key) => <li key={key.id} className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3 text-sm"><span className="min-w-0"><span className="block truncate font-medium">{key.name}</span><span className="font-mono text-xs text-muted-foreground">{key.prefix}…</span></span><RevokeKeyButton id={key.id}/></li>)}</ul> : <p className="mt-4 text-sm text-muted-foreground">No integration keys yet.</p>}</Panel>
 
     <Panel id="account"><div className="mb-6"><h2 className="text-lg font-semibold">Password</h2><p className="mt-1 text-sm text-muted-foreground">Changing your password signs out every other session.</p></div><PasswordForm /></Panel>
     <Panel><div className="mb-6"><h2 className="text-lg font-semibold">Where you’re signed in</h2><p className="mt-1 text-sm text-muted-foreground">Review active browsers and sign out anything you do not recognize.</p></div><SessionManager sessions={sessions}/></Panel>
 
-    {owner ? <Panel id="installation"><details><summary className="cursor-pointer list-none"><h2 className="inline text-lg font-semibold">Advanced installation settings</h2><p className="mt-1 text-sm text-muted-foreground">Public URL, storage limits, and live-payment safeguards for this self-hosted installation.</p></summary><div className="mt-6 border-t border-border pt-6"><SystemSettingsForm publicUrl={system.public_url} allowLive={system.allow_live_razorpay} maxIngestEvents={system.max_ingest_events}/></div></details></Panel> : null}
+    {owner && status ? <Panel id="installation"><details><summary className="cursor-pointer list-none"><h2 className="inline text-lg font-semibold">Advanced installation settings</h2><p className="mt-1 text-sm text-muted-foreground">Public URL, storage limits, live-payment safeguards, health, and encrypted recovery backups.</p></summary><div className="mt-6 border-t border-border pt-6"><div className="mb-8 grid gap-3 sm:grid-cols-3"><div className="rounded-xl border border-border p-4"><p className="text-xs text-muted-foreground">Database integrity</p><p className="mt-1 font-semibold capitalize">{status.database}</p></div><div className="rounded-xl border border-border p-4"><p className="text-xs text-muted-foreground">Schema version</p><p className="mt-1 font-semibold">{status.schema_version}</p></div><div className="rounded-xl border border-border p-4"><p className="text-xs text-muted-foreground">Action required</p><p className="mt-1 font-semibold">{status.webhook.failed + status.notifications.failed} failed jobs</p></div></div><SystemSettingsForm publicUrl={system.public_url} allowLive={system.allow_live_razorpay} maxIngestEvents={system.max_ingest_events}/><div className="mt-8 border-t border-border pt-6"><h3 className="font-semibold">Recovery backups</h3><p className="mb-5 mt-1 text-sm text-muted-foreground">Create and verify a portable recovery file without shell access or environment variables.</p><BackupManager history={backups}/></div></div></details></Panel> : null}
   </div>;
 }

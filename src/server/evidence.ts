@@ -87,3 +87,63 @@ export function attachExternalEvidence(userId: string, raw: unknown): IngestResu
     return result;
   })();
 }
+
+function csvRows(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [], field = "", quoted = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    if (quoted) {
+      if (char === '"' && text[i + 1] === '"') { field += '"'; i += 1; }
+      else if (char === '"') quoted = false;
+      else field += char;
+    } else if (char === '"') quoted = true;
+    else if (char === ",") { row.push(field); field = ""; }
+    else if (char === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
+    else if (char !== "\r") field += char;
+  }
+  if (quoted) throw new HttpError(400, "CSV contains an unterminated quoted field.", "invalid_csv");
+  if (field || row.length) { row.push(field); rows.push(row); }
+  return rows.filter((cells) => cells.some((cell) => cell.trim()));
+}
+
+export function importBankStatementCsv(userId: string, raw: unknown): IngestResult & { rows: number } {
+  if (!raw || typeof raw !== "object") throw new HttpError(400, "Bank statement is required.", "invalid_evidence");
+  const body = raw as Record<string, unknown>;
+  const file = artifact({ ...body, mime_type: body.mime_type || "text/csv" });
+  const rows = csvRows(file.bytes.toString("utf8"));
+  if (rows.length < 2 || rows.length > 201) throw new HttpError(400, "CSV must contain a header and between 1 and 200 data rows.", "invalid_csv");
+  const headers = rows[0].map((value) => value.trim().toLowerCase());
+  const required = ["payment_id", "bank_id", "amount", "date", "narration", "utr"];
+  for (const name of required) if (!headers.includes(name)) throw new HttpError(400, `CSV is missing the ${name} column.`, "invalid_csv");
+  const index = (name: string) => headers.indexOf(name);
+  const records = rows.slice(1).map((cells, offset) => {
+    const value = (name: string) => (cells[index(name)] ?? "").trim();
+    const paymentId = requiredString(value("payment_id"), `Row ${offset + 2} payment_id`, 256);
+    const record = recordForUser(userId, paymentId);
+    if (!record) throw new HttpError(400, `Row ${offset + 2} references an unknown payment.`, "invalid_csv");
+    const amount = Number(value("amount"));
+    if (!Number.isFinite(amount) || amount < 0 || Math.round(amount * 100) !== amount * 100) throw new HttpError(400, `Row ${offset + 2} amount must have at most two decimal places.`, "invalid_csv");
+    record.bank = {
+      id: requiredString(value("bank_id"), `Row ${offset + 2} bank_id`),
+      amount_minor: Math.round(amount * 100),
+      date: isoDate(value("date"), `Row ${offset + 2} date`),
+      narration: requiredString(value("narration"), `Row ${offset + 2} narration`),
+      utr: requiredString(value("utr"), `Row ${offset + 2} utr`),
+      intent_ref: headers.includes("intent_ref") ? optionalString(value("intent_ref")) : null,
+      source: "bank_statement",
+      source_hash: file.hash,
+    };
+    return record;
+  });
+  const db = getDb();
+  return db.transaction(() => {
+    const usage = db.prepare("SELECT COUNT(*) AS n, COALESCE(SUM(length(payload)), 0) AS bytes FROM evidence_artifacts WHERE user_id = ?").get(userId) as { n: number; bytes: number };
+    if (usage.n >= 1_000 || usage.bytes + file.bytes.length > 6 * 1024 * 1024) throw new HttpError(400, "Evidence storage limit reached (1,000 files or 6 MB).", "evidence_quota");
+    const result = ingestRecords(userId, "evidence:bank_csv", records);
+    const duplicate = db.prepare("SELECT 1 FROM evidence_artifacts WHERE user_id = ? AND kind = 'bank_statement' AND payload_hash = ? LIMIT 1").get(userId, file.hash);
+    if (!duplicate) db.prepare("INSERT INTO evidence_artifacts (id, user_id, payment_id, kind, file_name, mime_type, payload, payload_hash, created_at) VALUES (?, ?, ?, 'bank_statement', ?, ?, ?, ?, ?)")
+      .run(randomId("art"), userId, `batch:${randomId("bank")}`, file.name, file.mime, file.bytes, file.hash, nowMs());
+    return { ...result, rows: records.length };
+  })();
+}

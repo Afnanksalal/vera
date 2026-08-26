@@ -19,6 +19,8 @@ export type ChatIntegrationPublic = {
   pending: number;
   failed: number;
   last_delivery_at: number | null;
+  application_id: string | null;
+  commands_registered_at: number | null;
 };
 
 type IntegrationRow = {
@@ -28,6 +30,9 @@ type IntegrationRow = {
   webhook_url_cipher: string;
   signing_secret_cipher: string | null;
   command_public_key: string | null;
+  application_id: string | null;
+  bot_token_cipher: string | null;
+  commands_registered_at: number | null;
   notify_reports: number;
   notify_issues: number;
 };
@@ -83,7 +88,8 @@ function normalizedDiscordPublicKey(value: string): string | null {
 function rowFor(userId: string, kind: ChatProvider): IntegrationRow | undefined {
   return getDb().prepare(
     `SELECT user_id, provider, enabled, webhook_url_cipher, signing_secret_cipher,
-            command_public_key, notify_reports, notify_issues
+            command_public_key, application_id, bot_token_cipher, commands_registered_at,
+            notify_reports, notify_issues
      FROM chat_integrations WHERE user_id = ? AND provider = ?`
   ).get(userId, kind) as IntegrationRow | undefined;
 }
@@ -116,6 +122,8 @@ export function chatIntegrationPublic(userId: string, kind: ChatProvider): ChatI
     pending: stats.pending ?? 0,
     failed: stats.failed ?? 0,
     last_delivery_at: stats.last_delivery_at,
+    application_id: row?.application_id ?? null,
+    commands_registered_at: row?.commands_registered_at ?? null,
   };
 }
 
@@ -123,6 +131,8 @@ export function saveChatIntegration(userId: string, kindValue: string, input: {
   webhook_url?: string;
   signing_secret?: string;
   command_public_key?: string;
+  application_id?: string;
+  bot_token?: string;
   enabled?: boolean;
   notify_reports?: boolean;
   notify_issues?: boolean;
@@ -134,25 +144,42 @@ export function saveChatIntegration(userId: string, kindValue: string, input: {
   const webhookCipher = suppliedUrl ? encryptSecret(normalizeWebhookUrl(kind, suppliedUrl)) : current!.webhook_url_cipher;
   let signingCipher = current?.signing_secret_cipher ?? null;
   let publicKey = current?.command_public_key ?? null;
+  let applicationId = current?.application_id ?? null;
+  let botTokenCipher = current?.bot_token_cipher ?? null;
   if (kind === "slack" && input.signing_secret?.trim()) {
     const secret = input.signing_secret.trim();
     if (secret.length < 16 || secret.length > 256) throw new HttpError(400, "Slack signing secret looks invalid.", "invalid_signing_secret");
     signingCipher = encryptSecret(secret);
   }
-  if (kind === "discord" && input.command_public_key !== undefined) publicKey = normalizedDiscordPublicKey(input.command_public_key);
+  if (kind === "discord") {
+    if (input.command_public_key?.trim()) publicKey = normalizedDiscordPublicKey(input.command_public_key);
+    if (input.application_id?.trim()) {
+      const value = input.application_id.trim();
+      if (!/^\d{16,22}$/.test(value)) throw new HttpError(400, "Discord application ID looks invalid.", "invalid_application_id");
+      applicationId = value;
+    }
+    if (input.bot_token?.trim()) {
+      const value = input.bot_token.trim();
+      if (value.length < 32 || value.length > 256) throw new HttpError(400, "Discord bot token looks invalid.", "invalid_bot_token");
+      botTokenCipher = encryptSecret(value);
+    }
+  }
   getDb().prepare(
     `INSERT INTO chat_integrations
-       (user_id, provider, enabled, webhook_url_cipher, signing_secret_cipher, command_public_key, notify_reports, notify_issues, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       (user_id, provider, enabled, webhook_url_cipher, signing_secret_cipher, command_public_key,
+        application_id, bot_token_cipher, notify_reports, notify_issues, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(user_id, provider) DO UPDATE SET
        enabled = excluded.enabled,
        webhook_url_cipher = excluded.webhook_url_cipher,
        signing_secret_cipher = excluded.signing_secret_cipher,
        command_public_key = excluded.command_public_key,
+       application_id = excluded.application_id,
+       bot_token_cipher = excluded.bot_token_cipher,
        notify_reports = excluded.notify_reports,
        notify_issues = excluded.notify_issues,
        updated_at = excluded.updated_at`
-  ).run(userId, kind, input.enabled === false ? 0 : 1, webhookCipher, signingCipher, publicKey, input.notify_reports === false ? 0 : 1, input.notify_issues === false ? 0 : 1, nowMs());
+  ).run(userId, kind, input.enabled === false ? 0 : 1, webhookCipher, signingCipher, publicKey, applicationId, botTokenCipher, input.notify_reports === false ? 0 : 1, input.notify_issues === false ? 0 : 1, nowMs());
   audit(userId, kind, current ? "configuration.updated" : "configuration.created");
   return chatIntegrationPublic(userId, kind);
 }
@@ -261,30 +288,79 @@ export async function deliverPendingNotifications(userId: string, limit = 10): P
          ORDER BY created_at ASC LIMIT 1`
       ).get(userId, nowMs()) as { id: string; provider: ChatProvider; payload_json: string; attempts: number } | undefined;
       if (!found) return null;
-      const claimed = db.prepare("UPDATE notification_deliveries SET status = 'processing', attempts = attempts + 1, last_error = NULL WHERE id = ? AND status IN ('pending', 'failed')").run(found.id);
+      const claimed = db.prepare("UPDATE notification_deliveries SET status = 'processing', attempts = attempts + 1, last_error = NULL, locked_at = ? WHERE id = ? AND status IN ('pending', 'failed')").run(nowMs(), found.id);
       return claimed.changes === 1 ? { ...found, attempts: found.attempts + 1 } : null;
     })();
     if (!row) break;
     const integration = rowFor(userId, row.provider);
     if (!integration || !integration.enabled) {
-      db.prepare("UPDATE notification_deliveries SET status = 'failed', last_error = ?, next_attempt_at = ? WHERE id = ?").run("Integration is disabled.", nowMs() + 86_400_000, row.id);
+      db.prepare("UPDATE notification_deliveries SET status = 'failed', last_error = ?, next_attempt_at = ?, locked_at = NULL WHERE id = ?").run("Integration is disabled.", nowMs() + 86_400_000, row.id);
       failed += 1;
       continue;
     }
     try {
       await postWebhook(integration, JSON.parse(row.payload_json) as NotificationPayload);
-      db.prepare("UPDATE notification_deliveries SET status = 'delivered', delivered_at = ?, last_error = NULL WHERE id = ?").run(nowMs(), row.id);
+      db.prepare("UPDATE notification_deliveries SET status = 'delivered', delivered_at = ?, last_error = NULL, locked_at = NULL WHERE id = ?").run(nowMs(), row.id);
       audit(userId, row.provider, "notification.delivered", row.id);
       delivered += 1;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Delivery failed";
       const delay = Math.min(3_600_000, 30_000 * 2 ** Math.max(0, row.attempts - 1));
-      db.prepare("UPDATE notification_deliveries SET status = 'failed', last_error = ?, next_attempt_at = ? WHERE id = ?").run(message.slice(0, 500), nowMs() + delay, row.id);
+      db.prepare("UPDATE notification_deliveries SET status = 'failed', last_error = ?, next_attempt_at = ?, locked_at = NULL WHERE id = ?").run(message.slice(0, 500), nowMs() + delay, row.id);
       audit(userId, row.provider, "notification.failed", message);
       failed += 1;
     }
   }
   return { delivered, failed };
+}
+
+export async function deliverDueNotificationsAll(limit = 50): Promise<{ delivered: number; failed: number; recovered: number }> {
+  const db = getDb();
+  const recovered = db.prepare(
+    `UPDATE notification_deliveries
+     SET status = 'failed', last_error = 'Recovered after an interrupted delivery.', next_attempt_at = ?, locked_at = NULL
+     WHERE status = 'processing' AND locked_at IS NOT NULL AND locked_at < ?`
+  ).run(nowMs(), nowMs() - 5 * 60_000).changes;
+  const users = db.prepare(
+    `SELECT DISTINCT user_id FROM notification_deliveries
+     WHERE status IN ('pending', 'failed') AND attempts < 5 AND next_attempt_at <= ?
+     ORDER BY created_at ASC LIMIT ?`
+  ).all(nowMs(), Math.max(1, Math.min(100, Math.trunc(limit)))) as { user_id: string }[];
+  let delivered = 0;
+  let failed = 0;
+  for (const row of users) {
+    const result = await deliverPendingNotifications(row.user_id, Math.max(1, limit - delivered - failed));
+    delivered += result.delivered;
+    failed += result.failed;
+    if (delivered + failed >= limit) break;
+  }
+  return { delivered, failed, recovered };
+}
+
+export type IntegrationOperations = {
+  deliveries: { id: string; provider: ChatProvider; event_key: string; status: string; attempts: number; last_error: string | null; created_at: number; delivered_at: number | null }[];
+  audit: { id: string; provider: ChatProvider; action: string; detail: string | null; created_at: number }[];
+};
+
+export function integrationOperations(userId: string): IntegrationOperations {
+  return {
+    deliveries: getDb().prepare(
+      `SELECT id, provider, event_key, status, attempts, last_error, created_at, delivered_at
+       FROM notification_deliveries WHERE user_id = ? ORDER BY created_at DESC LIMIT 30`
+    ).all(userId) as IntegrationOperations["deliveries"],
+    audit: getDb().prepare(
+      `SELECT id, provider, action, detail, created_at
+       FROM integration_audit_log WHERE user_id = ? ORDER BY created_at DESC LIMIT 30`
+    ).all(userId) as IntegrationOperations["audit"],
+  };
+}
+
+export function retryFailedNotifications(userId: string): number {
+  const changed = getDb().prepare(
+    `UPDATE notification_deliveries SET status = 'pending', attempts = 0, next_attempt_at = ?, last_error = NULL, locked_at = NULL
+     WHERE user_id = ? AND status = 'failed'`
+  ).run(nowMs(), userId).changes;
+  return changed;
 }
 
 export async function publishCloseNotifications(userId: string, summary: CloseSummary): Promise<{ queued: number; delivered: number; failed: number }> {
@@ -310,6 +386,34 @@ export async function sendTestNotification(userId: string, kindValue: string): P
     occurred_at: new Date().toISOString(),
   });
   audit(userId, kind, "connection.tested");
+}
+
+export async function registerDiscordCommands(userId: string): Promise<void> {
+  const row = rowFor(userId, "discord");
+  if (!row?.application_id || !row.bot_token_cipher || !row.command_public_key) {
+    throw new HttpError(400, "Save the Discord application ID, public key, and bot token before registering commands.", "discord_commands_not_configured");
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8_000);
+  try {
+    const response = await fetch(`https://discord.com/api/v10/applications/${row.application_id}/commands`, {
+      method: "PUT",
+      headers: { authorization: `Bot ${decryptSecret(row.bot_token_cipher)}`, "content-type": "application/json", "user-agent": "Vera/1.0" },
+      body: JSON.stringify([{
+        name: "vera",
+        description: "Read verified Vera payment and evidence status",
+        options: [
+          { type: 1, name: "issues", description: "List current evidence issues" },
+          { type: 1, name: "payment", description: "Show one payment summary", options: [{ type: 3, name: "id", description: "Vera payment ID", required: true }] },
+        ],
+      }]),
+      redirect: "error",
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new HttpError(502, `Discord command registration returned HTTP ${response.status}.`, "discord_registration_failed");
+    getDb().prepare("UPDATE chat_integrations SET commands_registered_at = ?, updated_at = ? WHERE user_id = ? AND provider = 'discord'").run(nowMs(), nowMs(), userId);
+    audit(userId, "discord", "commands.registered");
+  } finally { clearTimeout(timeout); }
 }
 
 function safeEqualHex(expected: string, actual: string): boolean {

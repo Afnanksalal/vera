@@ -247,6 +247,17 @@ CREATE TABLE IF NOT EXISTS integration_audit_log (
 
 CREATE INDEX IF NOT EXISTS integration_audit_log_user
   ON integration_audit_log(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS backup_audit_log (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  action TEXT NOT NULL,
+  detail TEXT,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS backup_audit_log_user
+  ON backup_audit_log(user_id, created_at DESC);
 `;
 
 const MIGRATIONS: { version: number; sql: string }[] = [
@@ -393,6 +404,34 @@ const MIGRATIONS: { version: number; sql: string }[] = [
       );
       CREATE INDEX IF NOT EXISTS integration_audit_log_user
         ON integration_audit_log(user_id, created_at DESC);
+    `,
+  },
+  {
+    version: 8,
+    sql: `
+      ALTER TABLE chat_integrations ADD COLUMN application_id TEXT;
+      ALTER TABLE chat_integrations ADD COLUMN bot_token_cipher TEXT;
+      ALTER TABLE chat_integrations ADD COLUMN commands_registered_at INTEGER;
+      ALTER TABLE notification_deliveries ADD COLUMN locked_at INTEGER;
+      CREATE TABLE IF NOT EXISTS backup_audit_log (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        action TEXT NOT NULL,
+        detail TEXT,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS backup_audit_log_user
+        ON backup_audit_log(user_id, created_at DESC);
+    `,
+  },
+  {
+    version: 9,
+    sql: `
+      ALTER TABLE webhook_events ADD COLUMN next_attempt_at INTEGER;
+      ALTER TABLE webhook_events ADD COLUMN locked_at INTEGER;
+      UPDATE webhook_events SET next_attempt_at = created_at WHERE next_attempt_at IS NULL;
+      CREATE INDEX IF NOT EXISTS webhook_events_due
+        ON webhook_events(status, next_attempt_at, created_at);
     `,
   },
 ];

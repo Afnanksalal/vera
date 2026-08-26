@@ -18,6 +18,8 @@ Cookie-authenticated mutations require a same-origin `Origin` or `Referer`. Bear
 | `POST` | `/api/v1/ingest` | Ingest `{ "records": [...] }` |
 | `GET`/`POST` | `/api/v1/purchases` | List or create a pre-payment signed purchase session |
 | `POST` | `/api/v1/evidence` | Attach a processor report or bank statement and re-close |
+| `POST` | `/api/v1/evidence/bank-csv` | Validate and attach up to 200 bank rows from one CSV source |
+| `GET` | `/api/v1/operations` | Read tenant-scoped delivery, audit, queue, and integrity status |
 | `POST` | `/api/v1/close` | Close all current workspace records |
 | `GET` | `/api/v1/ledger` | Latest close and claim grid |
 | `GET` | `/api/v1/closes` | Close history; add `latest=1` for latest details |
@@ -44,3 +46,5 @@ Settlement imports accept `gross_minor`, `fee_minor`, `tax_minor`, and `net_mino
 `POST /api/v1/purchases` accepts principal and agent DIDs, merchant ID, category, SKU, quantity, unit amount, mandate budget, and validity. Vera creates and persists real Ed25519 mandate and cart attestations before it creates the Razorpay order. The order carries only Vera purchase and evidence hashes; the complete artifacts remain in Vera rather than being squeezed into Razorpay notes.
 
 `POST /api/v1/evidence` requires the original source file as base64 (maximum 1 MB) plus the selected settlement or bank row. Vera computes the file hash server-side, stores the original bytes, updates the payment record, and creates a new signed report. Processor rows must satisfy gross minus fee and tax equals net. Bank matching uses settlement net, date window, UTR, and mandate reference.
+
+`POST /api/v1/evidence/bank-csv` accepts the original CSV as base64 (maximum 1 MB). Required columns are `payment_id`, `bank_id`, `amount`, `date`, `narration`, and `utr`; `intent_ref` is optional. Every payment must already belong to the authenticated workspace. The import is transactional and the original file is retained once.

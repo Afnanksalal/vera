@@ -137,8 +137,8 @@ All money is integer paise. Floating-point amounts never enter the canonical led
 - `/app/review`: acknowledge exceptions without rewriting verifier output.
 - `/app/closes`: close history, audit-bundle download, trusted verification, and installation public-key export.
 - `/app/pay`: pre-payment mandate and cart signing followed by Razorpay Checkout.
-- `/app/evidence`: processor-report and bank-statement attachment with server-computed file hashes.
-- `/app/settings`: installation, AI, integration API-key, and Razorpay configuration.
+- `/app/evidence`: processor-report attachment, single bank-credit evidence, and validated bulk bank CSV import with server-computed file hashes.
+- `/app/settings`: installation health, encrypted recovery backups, AI, Slack, Discord, integration API-key, and Razorpay configuration.
 
 There are no seeded or fixture-backed runtime pages. Fixtures remain test-only and never enter the product database.
 
@@ -158,6 +158,7 @@ Create an integration API key in Settings and send it as `Authorization: Bearer 
 npm test
 npm run lint
 npm run build
+npm run test:http
 ```
 
 Synthetic fixtures, answer keys, and conformal calibration datasets exist only in the automated test suite. Production analysis always starts from records belonging to the authenticated workspace.

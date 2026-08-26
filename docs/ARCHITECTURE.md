@@ -70,7 +70,7 @@ Money is stored as integer paise. Protocol adapters preserve absence: a missing 
 
 The web-managed purchase path creates evidence before money moves. Vera generates encrypted workspace principal and merchant Ed25519 identities, signs the mandate and exact canonical cart, persists both artifacts, and only then creates the Razorpay order. The order carries the purchase ID and intent/cart hashes. On verified capture Vera fetches the payment from Razorpay, binds it to the stored artifacts, creates a merchant-signed receipt, and immediately closes the workspace.
 
-Settlement and bank proof remain asynchronous. Official Razorpay reconciliation records retain processor provenance and UTR. Other processor reports and bank statements are uploaded with the selected row; Vera stores the original bytes, computes the SHA-256 digest server-side, and includes both the artifact and digest in the signed audit bundle. Test-mode purchases never synthesize settlement or bank movement.
+Settlement and bank proof remain asynchronous. Official Razorpay reconciliation records retain processor provenance and UTR. Other processor reports and bank statements are uploaded with the selected row; bulk bank CSV imports validate up to 200 tenant-scoped payment rows and retain the source file once. Vera stores the original bytes, computes the SHA-256 digest server-side, and includes both the artifact and digest in the signed audit bundle. Test-mode purchases never synthesize settlement or bank movement.
 
 ```mermaid
 flowchart LR
@@ -161,7 +161,7 @@ flowchart LR
   MASTER --> IDENTITY[Encrypted Ed25519 private key]
 ```
 
-The database and master key form one backup unit. Restoring only the database preserves ciphertext but not the ability to decrypt it. Restoring only the key preserves no application state.
+The database and master key form one backup unit. Settings exports them as a passphrase-encrypted recovery file and can verify its authentication tag, SQLite header, and database digest without exposing plaintext. Live restore remains an offline operator action to prevent a browser session from replacing the running trust root.
 
 ## Request and trust boundaries
 
