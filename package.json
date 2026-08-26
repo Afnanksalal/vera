@@ -36,7 +36,8 @@
     "test": "node scripts/run-tests.mjs",
     "test:http": "node scripts/http-contract.mjs",
     "test:engine": "node --import tsx --test --test-reporter spec",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:ui": "node scripts/ui-contract.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

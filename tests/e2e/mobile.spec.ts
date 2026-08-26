@@ -6,7 +6,7 @@ test("mobile console uses an icon bottom bar and organized more sheet", async ({
   await expect(nav.getByText("Home", { exact: true })).toBeVisible();
   await expect(nav.getByText("Purchase", { exact: true })).toBeVisible();
   await nav.getByRole("button", { name: "More" }).click();
-  const sheet = page.getByRole("dialog", { name: "More console pages" });
+  const sheet = page.getByRole("dialog", { name: "More" });
   await expect(sheet.getByText("Reports", { exact: true })).toBeVisible();
   await expect(sheet.getByText("Evidence", { exact: true })).toBeVisible();
   await expect(sheet.getByText("Settings", { exact: true })).toBeVisible();

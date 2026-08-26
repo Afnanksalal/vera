@@ -3,6 +3,9 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
+import { FileInput } from "@/components/ui/file-input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Notice } from "@/components/ui/notice";
 
 type PaymentOption = { id: string; amount_paise: number; intent_id: string | null; settlement_net: number | null; settlement_utr: string | null };
 
@@ -56,7 +59,7 @@ export function EvidenceForm({ payments, kind }: { payments: PaymentOption[]; ki
   }
 
   return <form className="grid gap-4" onSubmit={submit}>
-    <Field label="Payment"><select className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm" value={paymentId} onChange={(event) => choosePayment(event.target.value)}>{payments.map((payment) => <option key={payment.id} value={payment.id}>{payment.id} · ₹{(payment.amount_paise / 100).toFixed(2)}</option>)}</select></Field>
+    <Field label="Payment"><Select value={paymentId} onValueChange={(value) => value && choosePayment(value)}><SelectTrigger className="h-10"><SelectValue /></SelectTrigger><SelectContent>{payments.map((payment) => <SelectItem key={payment.id} value={payment.id}>{payment.id} · ₹{(payment.amount_paise / 100).toFixed(2)}</SelectItem>)}</SelectContent></Select></Field>
     {kind === "processor" ? <div className="grid gap-4 sm:grid-cols-2">
       <Field label="Settlement ID"><Input required value={fields.settlement_id} onChange={set("settlement_id")} /></Field>
       <Field label="UTR / processor reference"><Input required value={fields.psp_ref} onChange={set("psp_ref")} /></Field>
@@ -64,16 +67,16 @@ export function EvidenceForm({ payments, kind }: { payments: PaymentOption[]; ki
       <Field label="Fee (₹)"><Input required type="number" min="0" step="0.01" value={fields.fee} onChange={set("fee")} /></Field>
       <Field label="Tax (₹)"><Input required type="number" min="0" step="0.01" value={fields.tax} onChange={set("tax")} /></Field>
       <Field label="Net credited (₹)"><Input required type="number" min="0" step="0.01" value={fields.net} onChange={set("net")} /></Field>
-      <Field label="Settled on"><Input required type="date" value={fields.settled_on} onChange={set("settled_on")} /></Field>
+      <Field label="Settled on"><Input required inputMode="numeric" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" title="Use YYYY-MM-DD" value={fields.settled_on} onChange={set("settled_on")} /></Field>
     </div> : <div className="grid gap-4 sm:grid-cols-2">
       <Field label="Bank transaction ID"><Input required value={fields.bank_id} onChange={set("bank_id")} /></Field>
       <Field label="UTR"><Input required value={fields.utr} onChange={set("utr")} /></Field>
       <Field label="Amount credited (₹)"><Input required type="number" min="0" step="0.01" value={fields.amount} onChange={set("amount")} /></Field>
-      <Field label="Credit date"><Input required type="date" value={fields.date} onChange={set("date")} /></Field>
+      <Field label="Credit date"><Input required inputMode="numeric" placeholder="YYYY-MM-DD" pattern="\d{4}-\d{2}-\d{2}" title="Use YYYY-MM-DD" value={fields.date} onChange={set("date")} /></Field>
       <Field label="Bank narration"><Input required value={fields.narration} onChange={set("narration")} /></Field>
       <Field label="Mandate / intent reference"><Input value={fields.intent_ref} onChange={set("intent_ref")} /></Field>
     </div>}
-    <Field label={kind === "processor" ? "Original processor report" : "Original bank statement"}><Input ref={fileRef} required type="file" accept=".csv,.json,.txt,.pdf,text/csv,application/json,application/pdf" className="h-auto min-h-10 py-2" /></Field>
-    <div className="flex flex-wrap items-center gap-3"><Button type="submit" disabled={pending || !payments.length}>{pending ? "Verifying…" : "Attach and recheck"}</Button>{message ? <p role="status" className="text-sm text-muted-foreground">{message}</p> : null}</div>
+    <Field label={kind === "processor" ? "Original processor report" : "Original bank statement"}><FileInput ref={fileRef} required accept=".csv,.json,.txt,.pdf,text/csv,application/json,application/pdf" /></Field>
+    <div className="flex flex-wrap items-center gap-3"><Button type="submit" disabled={pending || !payments.length}>{pending ? "Verifying…" : "Attach and recheck"}</Button>{message ? <Notice className="w-full">{message}</Notice> : null}</div>
   </form>;
 }

@@ -9,6 +9,7 @@ import { currentUser } from "@/server/http";
 import { latestInvestigations } from "@/server/investigations";
 import { closeById, latestClose } from "@/server/ledger";
 import { aiSettingsPublic } from "@/server/settings";
+import { Disclosure } from "@/components/ui/disclosure";
 
 export const dynamic = "force-dynamic";
 
@@ -66,25 +67,19 @@ export default async function CloseDetailPage({ params }: { params: Promise<{ id
                 </div>
                 {issues.length ? <div className="mt-4 grid gap-2">{issues.map((claim) => <div key={claim.claim_id} className="rounded-lg bg-bad/[0.035] p-3"><p className="text-sm font-medium">{friendlyClaim(claim.type)}</p><p className="mt-0.5 text-sm text-bad">{friendlyCode(claim.code)}</p></div>)}</div> : null}
                 <PaymentInvestigation saleId={saleId} closeId={close.summary.id} configured={ai.configured} model={ai.model} initial={investigations.get(saleId) ?? null} canRun={isCurrent} />
-                <details className="mt-4 border-t border-border pt-3">
-                  <summary className="cursor-pointer text-sm font-medium text-muted-foreground">View all {claims.length} checks</summary>
-                  <div className="mt-3 grid gap-2">{claims.map((claim) => <div key={claim.claim_id} className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-3 py-2"><span className="text-sm">{friendlyClaim(claim.type)}</span><StatusPill status={claim.status} /></div>)}</div>
-                </details>
+                <Disclosure title={`View all ${claims.length} checks`} className="mt-4 border-t border-border pt-3" triggerClassName="text-muted-foreground"><div className="grid gap-2">{claims.map((claim) => <div key={claim.claim_id} className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-3 py-2"><span className="text-sm">{friendlyClaim(claim.type)}</span><StatusPill status={claim.status} /></div>)}</div></Disclosure>
               </div>
             );
           })}
         </div>
       </Panel>
-      <details className="rounded-2xl border border-border bg-card">
-        <summary className="cursor-pointer p-5 text-sm font-medium">Technical evidence details</summary>
-        <div className="grid gap-4 border-t border-border p-5 text-sm">
+      <Disclosure title="Technical evidence details" className="rounded-2xl border border-border bg-card" triggerClassName="p-5" panelClassName="grid gap-4 border-t border-border p-5 text-sm">
           <div><p className="text-muted-foreground">Report ID</p><p className="mt-1 break-all font-mono text-xs">{close.summary.id}</p></div>
           <div><p className="text-muted-foreground">Evidence fingerprint</p><p className="mt-1 break-all font-mono text-xs">{close.summary.world_hash}</p></div>
           <div><p className="text-muted-foreground">Signed chain head</p><p className="mt-1 break-all font-mono text-xs">{bundle?.head ?? "—"}</p></div>
           <div><p className="text-muted-foreground">Signed report digest</p><p className="mt-1 break-all font-mono text-xs">{bundle?.signed_digest ?? bundle?.head ?? "—"}</p></div>
           <div className="flex flex-wrap gap-8"><div><p className="text-muted-foreground">Source files embedded</p><p className="mt-1 font-medium">{bundle?.artifacts?.length ?? 0}</p></div><div><p className="text-muted-foreground">Events</p><p className="mt-1 font-medium">{bundle?.events?.length ?? 0}</p></div><div><p className="text-muted-foreground">Automated lookups</p><p className="mt-1 font-medium">{bundle?.summary?.tool_calls ?? 0}</p></div><div><p className="text-muted-foreground">Verification challenges</p><p className="mt-1 font-medium">{bundle?.summary?.challenges ?? 0}</p></div></div>
-        </div>
-      </details>
+      </Disclosure>
     </div>
   );
 }

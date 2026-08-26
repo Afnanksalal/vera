@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/auth-form";
 import { currentUser } from "@/server/http";
 import { safeRedirectPath } from "@/server/navigation";
+import { Notice } from "@/components/ui/notice";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -29,9 +30,7 @@ export default async function LoginPage({
         Sign in to your Vera workspace. Integration API keys are managed in Settings.
       </p>
       {notice === "signed_out" ? (
-        <p role="status" className="mt-5 rounded-lg border border-border bg-muted px-4 py-3 text-sm text-foreground">
-          You have been signed out.
-        </p>
+        <Notice className="mt-5">You have been signed out.</Notice>
       ) : null}
       <div className="mt-8">
         <AuthForm mode="login" redirectTo={redirectTo} />

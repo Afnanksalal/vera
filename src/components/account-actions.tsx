@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Notice } from "@/components/ui/notice";
 
 export function LogoutButton() {
   const [pending, setPending] = useState(false);
@@ -33,7 +34,7 @@ export function LogoutButton() {
       >
         {pending ? "Signing out…" : "Sign out"}
       </Button>
-      {error ? <span role="alert" aria-live="polite" className="text-xs text-destructive">{error}</span> : null}
+      {error ? <Notice tone="error" role="alert" className="py-2 text-xs">{error}</Notice> : null}
     </div>
   );
 }
@@ -115,7 +116,7 @@ export function SessionManager({ sessions }: { sessions: SessionView[] }) {
       ) : (
         <p className="text-sm text-muted-foreground">No other active sessions.</p>
       )}
-      {message ? <p role="status" aria-live="polite" className="text-sm text-muted-foreground">{message}</p> : null}
+      {message ? <Notice>{message}</Notice> : null}
     </div>
   );
 }

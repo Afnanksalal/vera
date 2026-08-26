@@ -3,6 +3,9 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
+import { FileInput } from "@/components/ui/file-input";
+import { Disclosure } from "@/components/ui/disclosure";
+import { Notice } from "@/components/ui/notice";
 
 type History = { id: string; action: string; detail: string; created_at: number };
 
@@ -54,9 +57,9 @@ export function BackupManager({ history }: { history: History[] }) {
       <Field label="Backup passphrase"><Input type="password" minLength={16} maxLength={256} autoComplete="new-password" placeholder="At least 16 characters" value={passphrase} onChange={(event) => setPassphrase(event.target.value)} /></Field>
       <p className="text-xs leading-relaxed text-muted-foreground">The download contains the database and installation encryption key inside one AES-256-GCM encrypted file. Vera never stores the passphrase.</p>
       <div className="flex flex-wrap gap-3"><Button type="button" disabled={pending || passphrase.length < 16} onClick={create}>{pending ? "Working…" : "Download encrypted backup"}</Button><Button type="button" variant="outline" disabled={pending || passphrase.length < 16} onClick={verify}>Verify a backup</Button></div>
-      <Input ref={verifyRef} type="file" accept=".vera,application/vnd.vera.backup+json" className="h-auto min-h-10 py-2" />
-      {message ? <p role="status" className="text-sm text-muted-foreground">{message}</p> : null}
+      <FileInput ref={verifyRef} accept=".vera,application/vnd.vera.backup+json" />
+      {message ? <Notice>{message}</Notice> : null}
     </div>
-    <details><summary className="cursor-pointer text-sm font-medium">Backup audit log</summary><div className="mt-3 grid gap-2">{history.length ? history.map((item) => <div key={item.id} className="flex flex-wrap justify-between gap-2 rounded-lg border border-border px-3 py-2 text-xs"><span>{item.action.replaceAll("_", " ")}</span><time className="text-muted-foreground">{new Date(item.created_at).toLocaleString()}</time></div>) : <p className="text-sm text-muted-foreground">No backups created yet.</p>}</div></details>
+    <Disclosure title="Backup audit log"><div className="grid gap-2">{history.length ? history.map((item) => <div key={item.id} className="flex flex-wrap justify-between gap-2 rounded-lg border border-border px-3 py-2 text-xs"><span>{item.action.replaceAll("_", " ")}</span><time className="text-muted-foreground">{new Date(item.created_at).toLocaleString()}</time></div>) : <p className="text-sm text-muted-foreground">No backups created yet.</p>}</div></Disclosure>
   </div>;
 }

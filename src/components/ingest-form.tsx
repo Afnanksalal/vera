@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { FileInput } from "@/components/ui/file-input";
 
 export function IngestForm() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export function IngestForm() {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <input ref={fileRef} type="file" accept="application/json,.json" className="w-full max-w-xs text-sm" />
+      <FileInput ref={fileRef} accept="application/json,.json" className="max-w-xs" />
       <Button type="button" variant="outline" disabled={pending} onClick={submit}>
         {pending ? "Importing…" : "Import JSON file"}
       </Button>

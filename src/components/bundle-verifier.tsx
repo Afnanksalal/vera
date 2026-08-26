@@ -2,11 +2,12 @@
 
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { FileInput } from "@/components/ui/file-input";
 
 export function BundleVerifier() {
   const file = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string | null>(null);
-  return <div className="flex min-w-0 flex-wrap items-center gap-3"><input ref={file} type="file" accept="application/json,.json" className="w-full max-w-xs text-sm"/><Button variant="outline" onClick={async () => {
+  return <div className="flex min-w-0 flex-wrap items-center gap-3"><FileInput ref={file} accept="application/json,.json" className="max-w-xs"/><Button variant="outline" onClick={async () => {
     const selected = file.current?.files?.[0];
     if (!selected) return setStatus("Choose an audit bundle.");
     try {

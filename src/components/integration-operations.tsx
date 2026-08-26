@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { IntegrationOperations } from "@/server/chat-integrations";
+import { Disclosure } from "@/components/ui/disclosure";
+import { Notice } from "@/components/ui/notice";
 
 export function IntegrationOperationsPanel({ operations }: { operations: IntegrationOperations }) {
   const router = useRouter();
@@ -23,8 +25,8 @@ export function IntegrationOperationsPanel({ operations }: { operations: Integra
         router.refresh();
       }}>{pending ? "Retrying…" : "Retry failed deliveries"}</Button> : null}
     </div>
-    {message ? <p role="status" className="text-sm text-muted-foreground">{message}</p> : null}
+    {message ? <Notice>{message}</Notice> : null}
     {operations.deliveries.length ? <div className="overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead className="text-muted-foreground"><tr><th className="pb-2 font-medium">Provider</th><th className="pb-2 font-medium">Event</th><th className="pb-2 font-medium">Status</th><th className="pb-2 font-medium">Attempts</th><th className="pb-2 font-medium">Last result</th></tr></thead><tbody>{operations.deliveries.map((item) => <tr key={item.id} className="border-t border-border"><td className="py-3 capitalize">{item.provider}</td><td className="py-3 font-mono text-xs">{item.event_key}</td><td className="py-3 capitalize">{item.status}</td><td className="py-3">{item.attempts}</td><td className="max-w-xs truncate py-3 text-xs text-muted-foreground">{item.last_error ?? (item.delivered_at ? new Date(item.delivered_at).toLocaleString() : "Waiting")}</td></tr>)}</tbody></table></div> : <p className="text-sm text-muted-foreground">No notification deliveries yet.</p>}
-    <details><summary className="cursor-pointer text-sm font-medium">Integration audit log</summary><div className="mt-3 grid gap-2">{operations.audit.length ? operations.audit.map((item) => <div key={item.id} className="flex flex-wrap justify-between gap-2 rounded-lg border border-border px-3 py-2 text-xs"><span><span className="capitalize">{item.provider}</span> · {item.action}</span><time className="text-muted-foreground">{new Date(item.created_at).toLocaleString()}</time></div>) : <p className="text-sm text-muted-foreground">No integration changes recorded.</p>}</div></details>
+    <Disclosure title="Integration audit log"><div className="grid gap-2">{operations.audit.length ? operations.audit.map((item) => <div key={item.id} className="flex flex-wrap justify-between gap-2 rounded-lg border border-border px-3 py-2 text-xs"><span><span className="capitalize">{item.provider}</span> · {item.action}</span><time className="text-muted-foreground">{new Date(item.created_at).toLocaleString()}</time></div>) : <p className="text-sm text-muted-foreground">No integration changes recorded.</p>}</div></Disclosure>
   </div>;
 }

@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
+import { CheckboxField } from "@/components/ui/checkbox";
+import { Notice } from "@/components/ui/notice";
 import type { ChatIntegrationPublic } from "@/server/chat-integrations";
 
 export function ChatIntegrationForm({ integration, commandUrl }: { integration: ChatIntegrationPublic; commandUrl: string }) {
@@ -78,9 +80,9 @@ export function ChatIntegrationForm({ integration, commandUrl }: { integration: 
         <p className="mt-1 break-all font-mono">{commandUrl || "Set the installation Public URL to generate a public command endpoint."}</p>
         <p className="mt-2">{provider === "slack" ? "Use this as the Request URL for a /vera Slack command. Vera verifies Slack’s signature before returning read-only issues or payment summaries." : "Use this as the Discord Interactions Endpoint URL. Create a vera command with issues and payment subcommands; Vera verifies every Ed25519-signed interaction."}</p>
       </div>
-      <label className="flex items-start gap-3 text-sm"><input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} className="mt-1"/><span><span className="font-medium">Enable delivery</span><span className="block text-xs text-muted-foreground">Pause notifications and commands without deleting encrypted configuration.</span></span></label>
-      <label className="flex items-start gap-3 text-sm"><input type="checkbox" checked={notifyReports} onChange={(event) => setNotifyReports(event.target.checked)} className="mt-1"/><span><span className="font-medium">Clean reports</span><span className="block text-xs text-muted-foreground">Notify when every available check completes without an evidence issue.</span></span></label>
-      <label className="flex items-start gap-3 text-sm"><input type="checkbox" checked={notifyIssues} onChange={(event) => setNotifyIssues(event.target.checked)} className="mt-1"/><span><span className="font-medium">Reports needing attention</span><span className="block text-xs text-muted-foreground">Notify when a signed report contains missing or conflicting evidence.</span></span></label>
+      <CheckboxField checked={enabled} onCheckedChange={setEnabled} label="Enable delivery" description="Pause notifications and commands without deleting encrypted configuration." />
+      <CheckboxField checked={notifyReports} onCheckedChange={setNotifyReports} label="Clean reports" description="Notify when every available check completes without an evidence issue." />
+      <CheckboxField checked={notifyIssues} onCheckedChange={setNotifyIssues} label="Reports needing attention" description="Notify when a signed report contains missing or conflicting evidence." />
       <div className="flex flex-wrap gap-3 pt-1">
         <Button type="submit" disabled={pending}>{integration.configured ? `Update ${label}` : `Connect ${label}`}</Button>
         {integration.configured ? <Button type="button" variant="outline" disabled={pending || !integration.enabled} onClick={() => request("POST", "test")}>Send test</Button> : null}
@@ -89,7 +91,7 @@ export function ChatIntegrationForm({ integration, commandUrl }: { integration: 
       </div>
       {integration.configured ? <p className="text-xs text-muted-foreground">{integration.pending} queued · {integration.failed} failed{integration.last_delivery_at ? ` · Last delivered ${new Date(integration.last_delivery_at).toLocaleString()}` : ""}</p> : null}
       {provider === "discord" && integration.commands_registered_at ? <p className="text-xs text-muted-foreground">Commands registered {new Date(integration.commands_registered_at).toLocaleString()}.</p> : null}
-      {message ? <p role="status" className="text-sm text-muted-foreground">{message}</p> : null}
+      {message ? <Notice>{message}</Notice> : null}
     </div>
   </form>;
 }

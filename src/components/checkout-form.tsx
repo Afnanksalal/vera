@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { CheckboxField } from "@/components/ui/checkbox";
+import { Disclosure } from "@/components/ui/disclosure";
+import { Notice } from "@/components/ui/notice";
 import { Field, Input } from "@/components/ui/input";
 
 declare global {
@@ -84,9 +87,9 @@ export function CheckoutForm({ mode }: { mode: "test" | "live" }) {
         <Field label="Unit amount (₹)"><Input required type="number" min="1" step="0.01" value={form.unitAmount} onChange={set("unitAmount")} /></Field>
       </div>
     </section>
-    {mode === "live" ? <label className="flex items-start gap-2 text-sm"><input className="mt-1" type="checkbox" checked={confirmLive} onChange={(event) => setConfirmLive(event.target.checked)} /><span>I understand this opens live Razorpay Checkout and may charge real money.</span></label> : null}
+    {mode === "live" ? <CheckboxField checked={confirmLive} onCheckedChange={setConfirmLive} label="I understand this opens live Razorpay Checkout and may charge real money." /> : null}
     <div className="flex flex-wrap items-center gap-3"><Button type="submit" disabled={pending || (mode === "live" && !confirmLive)} className="h-10 w-fit px-4">{pending ? "Preparing proof…" : `Create verified ${mode === "live" ? "live " : ""}purchase`}</Button><p className="text-xs text-muted-foreground">Cart total: ₹{(Number(form.quantity || 0) * Number(form.unitAmount || 0)).toFixed(2)}</p></div>
-    {status ? <p role="status" className="rounded-xl bg-muted px-4 py-3 text-sm">{status}</p> : null}
-    {proof ? <details className="rounded-xl border border-border p-4 text-xs"><summary className="cursor-pointer font-medium">Pre-payment evidence fingerprints</summary><dl className="mt-3 grid gap-2 font-mono"><div><dt className="text-muted-foreground">Intent</dt><dd className="break-all">{proof.intentHash}</dd></div><div><dt className="text-muted-foreground">Cart</dt><dd className="break-all">{proof.cartHash}</dd></div></dl></details> : null}
+    {status ? <Notice>{status}</Notice> : null}
+    {proof ? <Disclosure title="Pre-payment evidence fingerprints" className="rounded-xl border border-border p-4 text-xs"><dl className="grid gap-2 font-mono"><div><dt className="text-muted-foreground">Intent</dt><dd className="break-all">{proof.intentHash}</dd></div><div><dt className="text-muted-foreground">Cart</dt><dd className="break-all">{proof.cartHash}</dd></div></dl></Disclosure> : null}
   </form>;
 }

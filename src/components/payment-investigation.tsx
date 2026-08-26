@@ -7,6 +7,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { friendlyClaim, friendlyCode, friendlyStatus, formatDateTime } from "@/components/console-ui";
 import { cn } from "@/lib/utils";
 import type { AiInvestigation } from "@/server/investigations";
+import { Disclosure } from "@/components/ui/disclosure";
+import { Notice } from "@/components/ui/notice";
 
 function aiSuggestion(action: "prove" | "except" | "abstain"): string {
   return action === "prove" ? "Looks valid" : action === "except" ? "Found an issue" : "Could not decide";
@@ -77,7 +79,7 @@ export function PaymentInvestigation({
         )}
       </div>
 
-      {error ? <p role="alert" className="mt-3 text-sm text-bad">{error}</p> : null}
+      {error ? <Notice tone="error" role="alert" className="mt-3">{error}</Notice> : null}
 
       {result ? (
         <div className="mt-4 border-t border-brand/15 pt-4">
@@ -86,9 +88,8 @@ export function PaymentInvestigation({
             {rejected ? <span className="font-medium text-bad">{rejected} rejected by Vera</span> : null}
             <span className="text-muted-foreground">{result.tool_calls} evidence lookups</span>
           </div>
-          <details className="mt-3">
-            <summary className="cursor-pointer text-sm font-medium text-brand">View AI findings and Vera’s decisions</summary>
-            <div className="mt-3 grid gap-2">
+          <Disclosure title="View AI findings and Vera’s decisions" className="mt-3" triggerClassName="text-brand" panelClassName="pt-3">
+            <div className="grid gap-2">
               {result.claims.map((claim) => (
                 <div key={claim.type} className="rounded-lg border border-border bg-background/70 p-3">
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
@@ -101,7 +102,7 @@ export function PaymentInvestigation({
                 </div>
               ))}
             </div>
-          </details>
+          </Disclosure>
         </div>
       ) : null}
     </div>

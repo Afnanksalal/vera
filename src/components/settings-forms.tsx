@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CheckboxField } from "@/components/ui/checkbox";
 
 export function PasswordForm() {
   const router = useRouter();
@@ -46,7 +47,7 @@ export function SystemSettingsForm({ publicUrl, allowLive, maxIngestEvents }: { 
   }}>
     <Field label="Public URL"><Input type="url" placeholder="https://vera.example.com" value={url} onChange={(e) => setUrl(e.target.value)} /></Field>
     <Field label="Maximum stored events per account"><Input required type="number" min={1000} max={1000000} step={1000} value={capacity} onChange={(e) => setCapacity(e.target.value)} /></Field>
-    <label className="flex items-start gap-3 text-sm"><input type="checkbox" checked={live} onChange={(e) => setLive(e.target.checked)} className="mt-1"/><span><span className="font-medium">Allow Razorpay live keys</span><span className="block text-xs text-muted-foreground">Test mode remains the default. Enable this only after TLS, backups, and webhook verification are in place.</span></span></label>
+    <CheckboxField checked={live} onCheckedChange={setLive} label="Allow Razorpay live keys" description="Test mode remains the default. Enable this only after TLS, backups, and webhook verification are in place." />
     <Button type="submit" className="h-10 w-fit px-4">Save installation settings</Button>
     {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
   </form>;
@@ -242,7 +243,7 @@ export function SyncButton() {
     >
       {pending ? "Syncing…" : "Sync payments and settlements"}
     </Button>
-    <Input aria-label="Month to import" type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="w-44" />
+    <Input aria-label="Month to import" inputMode="numeric" placeholder="YYYY-MM" pattern="\d{4}-\d{2}" title="Use YYYY-MM" value={month} onChange={(event) => setMonth(event.target.value)} className="w-44" />
     {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
     </div>
   );

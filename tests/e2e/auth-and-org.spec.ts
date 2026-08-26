@@ -17,8 +17,11 @@ test("protected redirects, signup, logout, and login form navigation work", asyn
 test("organization invitation shares the workspace and role is enforced", async ({ browser }) => {
   const owner = await browser.newContext(); const page = await owner.newPage();
   await page.goto("/signup"); await page.getByLabel("Email").fill("org-owner-e2e@example.com"); await page.getByLabel("Password").fill("production-test-password-123"); await page.getByRole("button", { name: "Create account" }).click(); await expect(page).toHaveURL(/\/app\/settings/); await page.goto("/app/settings#organization");
+  await expect(page.locator("select")).toHaveCount(0);
+  await expect(page.getByLabel("Role")).toHaveAttribute("data-slot", "select-trigger");
   await page.getByLabel("Email").last().fill("viewer-e2e@example.com");
-  await page.getByLabel("Role").selectOption("viewer");
+  await page.getByLabel("Role").click();
+  await page.getByRole("option", { name: "Viewer" }).click();
   await page.getByRole("button", { name: "Create invitation" }).click();
   const invitation = await page.locator("text=/\/invite\//").innerText();
 

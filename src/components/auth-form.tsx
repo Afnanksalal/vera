@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
+import { Notice } from "@/components/ui/notice";
 
 async function post(url: string, body: unknown) {
   const res = await fetch(url, {
@@ -64,7 +65,7 @@ export function AuthForm({ mode, redirectTo }: { mode: "login" | "signup"; redir
           onChange={(e) => setPassword(e.target.value)}
         />
       </Field>
-      {error ? <p role="alert" aria-live="polite" className="text-sm text-destructive">{error}</p> : null}
+      {error ? <Notice tone="error" role="alert">{error}</Notice> : null}
       <Button type="submit" disabled={pending} className="h-10">
         {pending ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}
       </Button>
