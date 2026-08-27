@@ -29,10 +29,10 @@ export function SiteHeader() {
               {link.label}
             </Link>
           ))}
-          <Link href="/docs" className="rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted">Docs</Link>
+          <Link href="/docs" className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground">Docs</Link>
         </nav>
         <div className="flex items-center gap-1.5 sm:gap-2">
-          <Link href="/docs" className="rounded-md px-2.5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted md:hidden">Docs</Link>
+          <Link href="/docs" className="rounded-md px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground md:hidden">Docs</Link>
           <AuthButtons />
         </div>
       </div>
