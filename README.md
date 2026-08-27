@@ -20,6 +20,10 @@
   <img src="public/art/vera-mascot.png" width="340" alt="Vera, a mint-green owl auditor holding a ledger and a magnifying glass" />
 </p>
 
+<p align="center">
+  <a href="demo/vera-product-demo.mp4"><strong>Watch the Vera product demo</strong></a>
+</p>
+
 When an AI agent buys under a mandate, the proof of what was authorized is scattered across mandate attestations, carts, receipts, processor settlements, and bank credits. Vera puts that trail back together, proves or flags every step, and keeps a signed record that a stranger can re-check.
 
 The AI investigator reasons over the payment trail and explains suspicious evidence. A deterministic verifier replays every cited lookup and re-derives every verdict from stored records, so the model is central to investigation without being trusted to mutate the ledger.
